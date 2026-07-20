@@ -1,0 +1,154 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &8598866945378032986
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 250
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 250
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 250
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.16020012
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.07600003
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.7722387
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.512156
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.53035295
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.48597887
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.4693044
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -92
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 85
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      propertyPath: m_Name
+      value: Weapon_Ak47
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 9081995408449791211}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4433063586696383659}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 913683155074082623}
+  m_SourcePrefab: {fileID: 100100000, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+--- !u!1 &8904784404272259083 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 9961aae3e0d063d499982242eb442fae, type: 3}
+  m_PrefabInstance: {fileID: 8598866945378032986}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &9081995408449791211
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8904784404272259083}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 42572e5f55caad74e9f5ed160cb919c7, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &4433063586696383659
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8904784404272259083}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b86870bf66acda546b578bac6d7857ed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponDrop
+  playerCamera: {fileID: 0}
+  floorPrefab: {fileID: 6493395956606141035, guid: c40e393998db72643ba407834d240d65, type: 3}
+  actionText: {fileID: 0}
+  throwForce: 8
+--- !u!114 &913683155074082623
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8904784404272259083}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 016430bb532024748b90b70b6bd5ef00, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponFire
+  ammoType: 1
+  weaponName: Ak47
+  maxClipSize: 30
+  fireRate: 0.3
+  reloadDuration: 3.2
+  fireAnimationName: ak47Fire
+  reloadAnimationName: Ak47reload
+  gunFireSound: {fileID: 0}
+  weaponMeshModel: {fileID: 8904784404272259083}
+  crosshairDot: {fileID: 0}
+  emptyGunSound: {fileID: 0}
