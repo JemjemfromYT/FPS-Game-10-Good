@@ -5,17 +5,21 @@ public class MobileControls : MonoBehaviour
     [Header("References")]
     public CharacterController playerController;
     public Transform playerCamera;
-    [Tooltip("Drag in Weapon_Container (the parent of all your weapons)")]
     public GameObject weaponContainer;
     public VirtualJoystick joystick;
 
     [Header("UI / Game Buttons")]
-    [Tooltip("Drag the StatsPanel GameObject (Tab key)")]
     public GameObject statsPanel;
-    [Tooltip("Drag the StoreManager GameObject (B key)")]
-    public GameObject storeObject;
-    [Tooltip("Drag the WaveManager GameObject (P key)")]
+    public GameObject storePanel;
     public GameObject waveManager;
+
+    [Header("Button GameObjects (to auto-hide/show)")]
+    [Tooltip("Drag the START WAVE button GameObject here")]
+    public GameObject waveButton;
+    [Tooltip("Drag the STORE button GameObject here")]
+    public GameObject storeButton;
+    [Tooltip("Drag PromptText from the Hierarchy — the cyan wave/store prompt")]
+    public GameObject promptText;
 
     [Header("Feel")]
     public float moveSpeed = 4f;
@@ -35,6 +39,15 @@ public class MobileControls : MonoBehaviour
     {
         HandleMovement();
         HandleLook();
+        SyncWaveButtons();
+    }
+
+    void SyncWaveButtons()
+    {
+        if (promptText == null) return;
+        bool showWaveUI = promptText.activeSelf;
+        if (waveButton != null) waveButton.SetActive(showWaveUI);
+        if (storeButton != null) storeButton.SetActive(showWaveUI);
     }
 
     void HandleMovement()
@@ -51,7 +64,6 @@ public class MobileControls : MonoBehaviour
         foreach (Touch touch in Input.touches)
         {
             if (touch.position.x < Screen.width * 0.5f) continue;
-
             if (touch.phase == TouchPhase.Began && _lookFingerId == -1)
             {
                 _lookFingerId = touch.fingerId;
@@ -69,9 +81,7 @@ public class MobileControls : MonoBehaviour
             }
             else if ((touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled)
                      && touch.fingerId == _lookFingerId)
-            {
                 _lookFingerId = -1;
-            }
         }
     }
 
@@ -97,8 +107,8 @@ public class MobileControls : MonoBehaviour
 
     public void OnStoreButton()
     {
-        if (storeObject != null)
-            storeObject.SendMessage("OpenStore", SendMessageOptions.DontRequireReceiver);
+        if (storePanel != null)
+            storePanel.SetActive(!storePanel.activeSelf);
     }
 
     public void OnStartWaveButton()

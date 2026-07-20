@@ -3204,8 +3204,11 @@ MonoBehaviour:
   weaponContainer: {fileID: 589866345}
   joystick: {fileID: 1376446785}
   statsPanel: {fileID: 1591629561}
-  storeObject: {fileID: 1866082441}
+  storePanel: {fileID: 1866082441}
   waveManager: {fileID: 2057573267}
+  waveButton: {fileID: 840837755}
+  storeButton: {fileID: 372738251}
+  promptText: {fileID: 413895540}
   moveSpeed: 4
   lookSensitivity: 0.15
 --- !u!4 &424199791
