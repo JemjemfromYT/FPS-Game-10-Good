@@ -9,6 +9,14 @@ public class MobileControls : MonoBehaviour
     public GameObject weaponContainer;
     public VirtualJoystick joystick;
 
+    [Header("UI / Game Buttons")]
+    [Tooltip("Drag the StatsPanel GameObject (Tab key)")]
+    public GameObject statsPanel;
+    [Tooltip("Drag the StoreManager GameObject (B key)")]
+    public GameObject storeObject;
+    [Tooltip("Drag the WaveManager GameObject (P key)")]
+    public GameObject waveManager;
+
     [Header("Feel")]
     public float moveSpeed = 4f;
     public float lookSensitivity = 0.15f;
@@ -16,6 +24,12 @@ public class MobileControls : MonoBehaviour
     private float _cameraPitch = 0f;
     private int _lookFingerId = -1;
     private Vector2 _lastLookPos;
+
+    void Start()
+    {
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+    }
 
     void Update()
     {
@@ -73,5 +87,23 @@ public class MobileControls : MonoBehaviour
     {
         if (weaponContainer != null)
             weaponContainer.BroadcastMessage("Reload", SendMessageOptions.DontRequireReceiver);
+    }
+
+    public void OnStatsButton()
+    {
+        if (statsPanel != null)
+            statsPanel.SetActive(!statsPanel.activeSelf);
+    }
+
+    public void OnStoreButton()
+    {
+        if (storeObject != null)
+            storeObject.SendMessage("OpenStore", SendMessageOptions.DontRequireReceiver);
+    }
+
+    public void OnStartWaveButton()
+    {
+        if (waveManager != null)
+            waveManager.SendMessage("StartNextWave", SendMessageOptions.DontRequireReceiver);
     }
 }
