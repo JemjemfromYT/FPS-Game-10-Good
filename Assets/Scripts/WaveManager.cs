@@ -5,55 +5,52 @@ using TMPro;
 public class WaveManager : MonoBehaviour
 {
     [Header("Wave Settings")]
-    public GameObject zombiePrefab;
+    public GameObject zombiePrefab;            // Your normal zombie (keep this filled in)
+    public GameObject[] extraEnemyPrefabs;     // Add ZombieExploder here in the Inspector
+    public int extraEnemiesStartWave = 3;      // Which wave the extra enemies start appearing
+    [Range(0f, 1f)]
+    public float extraEnemyChance = 0.35f;     // 35% chance each spawn is an extra enemy type
+
     public Transform[] spawnPoints;
     public float timeBetweenSpawns = 1.5f;
 
     [Header("UI References")]
-    public TMP_Text waveText;       // Permanent display (e.g., "WAVE 1")
-    public TMP_Text promptText;     // Temporary display (e.g., "Press 'P' to Start...")
+    public TMP_Text waveText;
+    public TMP_Text promptText;
 
     private int currentWave = 0;
     private int zombiesToSpawn;
     private bool isSpawning = false;
     private bool waitingForPlayer = false;
 
-    // Add this new static variable near the top of the variables list:
     public static bool isWaveActive = false;
 
     void Start()
     {
-        // Setup the initial text layout
         if (waveText != null) waveText.text = "WAVE 0";
         PrepareNextWave();
     }
 
     void Update()
     {
-        // 1. If we are waiting for the player to press P
         if (waitingForPlayer)
         {
             if (Input.GetKeyDown(KeyCode.P))
-            {
                 StartNextWave();
-            }
             return;
         }
 
-        // 2. If a wave is running, check if all zombies are dead
         if (!isSpawning)
         {
             if (GameObject.FindGameObjectsWithTag("Enemy").Length == 0)
-            {
                 PrepareNextWave();
-            }
         }
     }
 
     void PrepareNextWave()
     {
         waitingForPlayer = true;
-        isWaveActive = false; // NEW: Wave is over, shop can open!
+        isWaveActive = false;
 
         if (promptText != null)
         {
@@ -65,12 +62,10 @@ public class WaveManager : MonoBehaviour
     void StartNextWave()
     {
         waitingForPlayer = false;
-        isWaveActive = true; // NEW: Wave started, close/disable shopping inputs
+        isWaveActive = true;
 
         if (promptText != null)
-        {
             promptText.gameObject.SetActive(false);
-        }
 
         currentWave++;
         if (waveText != null) waveText.text = "WAVE " + currentWave;
@@ -84,10 +79,25 @@ public class WaveManager : MonoBehaviour
         isSpawning = true;
         yield return new WaitForSeconds(0.5f);
 
+        bool canSpawnExtra = currentWave >= extraEnemiesStartWave
+                             && extraEnemyPrefabs != null
+                             && extraEnemyPrefabs.Length > 0;
+
         for (int i = 0; i < zombiesToSpawn; i++)
         {
-            Transform randomSpawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
-            Instantiate(zombiePrefab, randomSpawnPoint.position, randomSpawnPoint.rotation);
+            Transform spawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
+
+            // Pick which prefab to spawn
+            GameObject prefabToSpawn = zombiePrefab;
+
+            if (canSpawnExtra && Random.value < extraEnemyChance)
+            {
+                // Pick a random extra enemy type (e.g. ZombieExploder)
+                prefabToSpawn = extraEnemyPrefabs[Random.Range(0, extraEnemyPrefabs.Length)];
+            }
+
+            if (prefabToSpawn != null)
+                Instantiate(prefabToSpawn, spawnPoint.position, spawnPoint.rotation);
 
             yield return new WaitForSeconds(timeBetweenSpawns);
         }

@@ -71,7 +71,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 5dc532fb8b8f8c94cac35e5b7b31eecd, type: 2}
+  - {fileID: 2100000, guid: dfb60c047f472e247a53d32610fc6430, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -183,3 +183,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1eb1fc3b046aa14c9aa321af5315961, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ExplodingEnemy
+  explosionRadius: 4
+  explosionDamage: 80
+  triggerDistance: 2.5
+  fuseTime: 1.5
+  enemyColor: {r: 1, g: 0.25, b: 0, a: 1}
+  sizeMultiplier: 1.3
+  bodyRenderer: {fileID: 188489069716032594}
+  flashSpeed: 5
+  fuseSound: {fileID: 0}
+  explosionSound: {fileID: 0}
+  explosionEffectPrefab: {fileID: 0}
+  shakeMagnitude: 0.3
+  shakeDuration: 0.25

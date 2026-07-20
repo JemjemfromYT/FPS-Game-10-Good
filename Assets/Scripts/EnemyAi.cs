@@ -61,7 +61,18 @@ public class EnemyAi : MonoBehaviour
         health -= damage;
         bool isKillingBlow = health <= 0;
 
-        hurtVisual.PlayHitFlash(isKillingBlow, isKillingBlow ? () => Destroy(gameObject) : null);
+        // --- EXPLODING ENEMY SUPPORT ---
+        // If this enemy has an ExplodingEnemy component, let it handle death
+        // instead of just destroying the object normally.
+        System.Action deathCallback;
+        ExplodingEnemy exploder = GetComponent<ExplodingEnemy>();
+        if (exploder != null)
+            deathCallback = exploder.TriggerExplosion;
+        else
+            deathCallback = () => Destroy(gameObject);
+        // --------------------------------
+
+        hurtVisual.PlayHitFlash(isKillingBlow, isKillingBlow ? deathCallback : null);
 
         if (isKillingBlow)
         {

@@ -2,129 +2,143 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
 
-/// <summary>
-/// Exploding Enemy - attach this to your zombie prefab ALONGSIDE EnemyAI and EnemyHealth.
-/// This script handles the explode-on-death / explode-on-proximity behaviour.
-///
-/// SETUP STEPS (in Unity):
-///   1. Duplicate your existing Zombie prefab  ->  rename it "ZombieExploder"
-///   2. Add THIS script to it
-///   3. Assign the fields in the Inspector (see comments below)
-///   4. Optionally create an "ExplosionEffect" prefab (particle + light) and assign it
-///   5. Add ZombieExploder to your SpawnManager's enemy list for later waves
-/// </summary>
-[RequireComponent(typeof(NavMeshAgent))]
-[RequireComponent(typeof(EnemyHealth))]      // keeps working with your existing health system
+// ================================================================
+//  ExplodingEnemy.cs
+//
+//  HOW TO SET UP (only 3 steps):
+//
+//  STEP 1 — Replace Assets/Scripts/EnemyAi.cs with the new one
+//           (only 4 lines changed inside TakeDamage)
+//
+//  STEP 2 — Add THIS script to your ZombieExploder prefab
+//           (the same prefab that already has EnemyAi on it)
+//
+//  STEP 3 — In the Inspector, fill in the fields below:
+//           • Body Renderer  → drag the enemy Capsule's Mesh Renderer here
+//           • Fuse Sound     → a ticking AudioClip (can leave empty)
+//           • Explosion Sound→ a boom AudioClip (can leave empty)
+//           • Explosion Effect Prefab → a particle prefab (can leave empty)
+//
+//  That's it. No other scripts need to be changed.
+// ================================================================
+
 public class ExplodingEnemy : MonoBehaviour
 {
-    [Header("Explosion Settings")]
-    [Tooltip("How far the blast reaches")]
+    [Header("Explosion")]
+    [Tooltip("How far the blast reaches (Unity units)")]
     public float explosionRadius = 4f;
 
-    [Tooltip("Max damage at the centre of the blast (falls off with distance)")]
+    [Tooltip("Max damage at the centre — drops off toward the edge")]
     public float explosionDamage = 80f;
 
-    [Tooltip("How close the enemy gets before it auto-triggers the countdown")]
+    [Header("Proximity Trigger")]
+    [Tooltip("How close the enemy gets before it starts the countdown")]
     public float triggerDistance = 2.5f;
 
-    [Tooltip("Seconds between reaching trigger distance and the actual boom")]
+    [Tooltip("Seconds from trigger to boom")]
     public float fuseTime = 1.5f;
 
-    [Header("Flash / Warning")]
-    [Tooltip("The Renderer whose material colour we flash red (assign the capsule mesh)")]
+    [Header("Appearance")]
+    [Tooltip("Make it slightly bigger than a normal zombie so it stands out")]
+    public float sizeMultiplier = 1.3f;
+
+    [Header("Warning Flash")]
+    [Tooltip("Drag the enemy Capsule's Mesh Renderer here")]
     public Renderer bodyRenderer;
 
-    [Tooltip("How fast the warning flash pulses (flashes per second)")]
-    public float flashSpeed = 4f;
+    [Tooltip("How fast it flashes red (flashes per second)")]
+    public float flashSpeed = 5f;
 
     [Header("Audio")]
-    [Tooltip("Beeping / ticking sound played during the fuse countdown")]
+    [Tooltip("Ticking/beeping sound during the countdown (optional)")]
     public AudioClip fuseSound;
 
-    [Tooltip("Explosion boom sound")]
+    [Tooltip("Explosion boom sound (optional)")]
     public AudioClip explosionSound;
 
     [Header("VFX")]
-    [Tooltip("Optional particle prefab spawned at explosion point")]
+    [Tooltip("Particle prefab spawned at the explosion point (optional)")]
     public GameObject explosionEffectPrefab;
 
-    [Tooltip("Camera shake magnitude (uses CameraShake script if present on Main Camera)")]
+    [Header("Camera Shake")]
     public float shakeMagnitude = 0.3f;
+    public float shakeDuration = 0.25f;
 
-    [Tooltip("Camera shake duration in seconds")]
-    public float shakeDuration = 0.2f;
-
-    // ── internals ──────────────────────────────────────────────────────────────
-    private Transform _player;
+    // ── private ──────────────────────────────────────────────────
+    private EnemyAi _enemyAi;
     private NavMeshAgent _agent;
-    private EnemyHealth _health;
     private AudioSource _audio;
-    private bool _fuseActive = false;
-    private bool _hasExploded = false;
+    private Transform _player;
+
+    private bool _fuseStarted = false;
+    private bool _exploded = false;
+
+    private Material _bodyMat;
     private Color _originalColor;
-    private Material _mat;
 
-    // ── Unity lifecycle ────────────────────────────────────────────────────────
-
+    // ─────────────────────────────────────────────────────────────
     void Start()
     {
+        _enemyAi = GetComponent<EnemyAi>();
         _agent = GetComponent<NavMeshAgent>();
-        _health = GetComponent<EnemyHealth>();
         _audio = GetComponent<AudioSource>();
 
-        // Try to find the player the same way EnemyAI does
+        // Find the player the same way EnemyAi does
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
         if (playerObj != null)
             _player = playerObj.transform;
 
-        // Cache original colour so we can restore it between flashes
+        // Auto-find the renderer if you didn't assign one in the Inspector
+        if (bodyRenderer == null)
+            bodyRenderer = GetComponent<Renderer>();
+        if (bodyRenderer == null)
+            bodyRenderer = GetComponentInChildren<Renderer>();
+
+        // Cache a per-instance copy of the body material for flashing
         if (bodyRenderer != null)
         {
-            _mat = bodyRenderer.material;   // creates instance copy - safe
-            _originalColor = _mat.color;
+            _bodyMat = bodyRenderer.material;   // creates instance copy — safe
+            _originalColor = _bodyMat.color;          // remember the actual material colour
         }
 
-        // Listen for the existing health system's death event so we explode on death too
-        if (_health != null)
-            _health.OnDeath += HandleDeath;
+        // Make it slightly bigger so it's easy to spot
+        transform.localScale *= sizeMultiplier;
     }
 
     void Update()
     {
-        if (_hasExploded || _player == null) return;
+        if (_exploded || _player == null) return;
 
-        float dist = Vector3.Distance(transform.position, _player.position);
-
-        // Start the countdown when close enough
-        if (!_fuseActive && dist <= triggerDistance)
-            StartCoroutine(FuseCountdown());
+        // Start proximity countdown if not already started
+        if (!_fuseStarted)
+        {
+            float dist = Vector3.Distance(transform.position, _player.position);
+            if (dist <= triggerDistance)
+                StartCoroutine(ProximityFuse());
+        }
     }
 
-    void OnDestroy()
+    // ── Called by EnemyAi.TakeDamage when the enemy is shot to death ──
+    // (This runs after the death flash animation finishes)
+    public void TriggerExplosion()
     {
-        // Unsubscribe to avoid memory leaks
-        if (_health != null)
-            _health.OnDeath -= HandleDeath;
+        Explode();
     }
 
-    // ── fuse & explosion ───────────────────────────────────────────────────────
-
-    /// <summary>Called when the EnemyHealth script fires the OnDeath event.</summary>
-    private void HandleDeath()
+    // ── Proximity fuse — runs when player walks too close ─────────
+    private IEnumerator ProximityFuse()
     {
-        if (!_hasExploded)
-            Explode();
-    }
+        _fuseStarted = true;
 
-    private IEnumerator FuseCountdown()
-    {
-        _fuseActive = true;
-
-        // Stop the NavMesh agent so the enemy "freezes" while counting down
+        // Freeze movement so enemy stops and locks in
         if (_agent != null && _agent.isOnNavMesh)
             _agent.isStopped = true;
 
-        // Play fuse sound
+        // Disable EnemyAi so it stops trying to attack during countdown
+        if (_enemyAi != null)
+            _enemyAi.enabled = false;
+
+        // Start ticking sound
         if (_audio != null && fuseSound != null)
         {
             _audio.clip = fuseSound;
@@ -132,16 +146,15 @@ public class ExplodingEnemy : MonoBehaviour
             _audio.Play();
         }
 
+        // Flash body red for fuseTime seconds
         float elapsed = 0f;
         while (elapsed < fuseTime)
         {
-            // Flash body colour between red and original
-            if (_mat != null)
+            if (_bodyMat != null)
             {
                 float t = Mathf.PingPong(elapsed * flashSpeed, 1f);
-                _mat.color = Color.Lerp(_originalColor, Color.red, t);
+                _bodyMat.color = Color.Lerp(_originalColor, Color.red, t);
             }
-
             elapsed += Time.deltaTime;
             yield return null;
         }
@@ -149,34 +162,40 @@ public class ExplodingEnemy : MonoBehaviour
         Explode();
     }
 
+    // ── Core explosion logic ───────────────────────────────────────
     private void Explode()
     {
-        if (_hasExploded) return;
-        _hasExploded = true;
+        if (_exploded) return;
+        _exploded = true;
 
-        // ── sound ──────────────────────────────────────────────────────────────
+        // Stop ticking
+        if (_audio != null) _audio.Stop();
+
+        // Boom sound — played at world position so it survives Destroy
         if (explosionSound != null)
-            // Detach and play so it survives the object being destroyed
             AudioSource.PlayClipAtPoint(explosionSound, transform.position, 1f);
 
-        // ── VFX ───────────────────────────────────────────────────────────────
+        // Spawn the explosion visual effect (no prefab needed — built in code)
+        ExplosionEffect.Spawn(transform.position, explosionRadius);
+
+        // Also spawn optional prefab if you assigned one in the Inspector
         if (explosionEffectPrefab != null)
             Instantiate(explosionEffectPrefab, transform.position, Quaternion.identity);
 
-        // ── camera shake ──────────────────────────────────────────────────────
+        // Camera shake — uses the CameraShake script on your Main Camera
         CameraShake shake = Camera.main?.GetComponent<CameraShake>();
         if (shake != null)
             shake.TriggerShake(shakeMagnitude, shakeDuration);
 
-        // ── deal damage to everything in radius ───────────────────────────────
+        // Damage everything inside the explosion radius
         Collider[] hits = Physics.OverlapSphere(transform.position, explosionRadius);
         foreach (Collider hit in hits)
         {
             float dist = Vector3.Distance(transform.position, hit.transform.position);
-            float factor = 1f - Mathf.Clamp01(dist / explosionRadius);   // 1 at centre, 0 at edge
+            float factor = 1f - Mathf.Clamp01(dist / explosionRadius); // 1 at centre → 0 at edge
             float dmg = explosionDamage * factor;
 
-            // Player damage
+            // Damage the player
             PlayerHealth ph = hit.GetComponent<PlayerHealth>();
             if (ph != null)
             {
@@ -184,26 +203,34 @@ public class ExplodingEnemy : MonoBehaviour
                 continue;
             }
 
-            // Other enemies (friendly fire from explosion, optional)
+            // Damage other enemies with EnemyHealth
             EnemyHealth eh = hit.GetComponent<EnemyHealth>();
-            if (eh != null && eh != _health)
+            if (eh != null)
+            {
                 eh.TakeDamage(dmg);
+                continue;
+            }
+
+            // Damage other enemies with EnemyAi (but not ourselves)
+            EnemyAi ea = hit.GetComponent<EnemyAi>();
+            if (ea != null && ea != _enemyAi)
+                ea.TakeDamage(dmg);
         }
 
-        // Draw a debug sphere in the editor so you can see the radius
-        Debug.DrawRay(transform.position, Vector3.up * explosionRadius, Color.red, 2f);
-
-        // ── destroy this enemy ────────────────────────────────────────────────
         Destroy(gameObject);
     }
 
-    // Draw radius in editor (visible in Scene view with Gizmos on)
+    // ── Draw radius in Scene view (Gizmos must be ON) ─────────────
     void OnDrawGizmosSelected()
     {
-        Gizmos.color = new Color(1f, 0.3f, 0f, 0.35f);
+        // Orange = explosion radius
+        Gizmos.color = new Color(1f, 0.4f, 0f, 0.2f);
         Gizmos.DrawSphere(transform.position, explosionRadius);
+        Gizmos.color = new Color(1f, 0.4f, 0f, 0.9f);
+        Gizmos.DrawWireSphere(transform.position, explosionRadius);
 
-        Gizmos.color = new Color(1f, 0f, 0f, 0.6f);
+        // Red = proximity trigger distance
+        Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, triggerDistance);
     }
 }
