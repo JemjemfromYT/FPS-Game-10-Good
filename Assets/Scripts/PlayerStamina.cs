@@ -26,7 +26,11 @@ public class PlayerStamina : MonoBehaviour
     private CharacterController characterController;
     private bool canSprint = true;
 
-    // This lets your Footsteps script know if you are ACTUALLY sprinting
+    // Set to true by MobileControls.OnSprintButtonDown,
+    // false by MobileControls.OnSprintButtonUp.
+    public static bool MobileSprinting = false;
+
+    // Footsteps script reads this to know if actually sprinting
     public bool IsSprinting { get; private set; }
 
     void Start()
@@ -46,18 +50,16 @@ public class PlayerStamina : MonoBehaviour
         // 1. GRAVITY & GROUND CHECK
         isGrounded = characterController.isGrounded;
         if (isGrounded && velocity.y < 0)
-        {
             velocity.y = -2f;
-        }
 
-        // 2. READ KEYBOARD INPUTS
+        // 2. READ INPUTS — Shift key (keyboard) OR mobile Sprint button
         float moveX = Input.GetAxis("Horizontal");
         float moveZ = Input.GetAxis("Vertical");
         bool isMoving = (moveX != 0 || moveZ != 0);
 
-        bool isTryingToSprint = Input.GetKey(KeyCode.LeftShift) && isMoving && canSprint && currentStamina > 0;
+        bool isTryingToSprint = (Input.GetKey(KeyCode.LeftShift) || MobileSprinting)
+                                && isMoving && canSprint && currentStamina > 0;
 
-        // Update the public tracking variable for the footstep audio system
         IsSprinting = isTryingToSprint;
 
         // 3. STAMINA MATH & RESTRICTIONS
@@ -75,10 +77,8 @@ public class PlayerStamina : MonoBehaviour
             currentStamina += regenRate * Time.deltaTime;
             if (currentStamina > maxStamina) currentStamina = maxStamina;
 
-            if (!canSprint && currentStamina >= (maxStamina * 0.2f))
-            {
+            if (!canSprint && currentStamina >= maxStamina * 0.2f)
                 canSprint = true;
-            }
         }
 
         if (staminaSlider != null) staminaSlider.value = currentStamina;
@@ -92,9 +92,7 @@ public class PlayerStamina : MonoBehaviour
 
         // 5. JUMP LOGIC
         if (Input.GetButtonDown("Jump") && isGrounded)
-        {
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-        }
 
         velocity.y += gravity * Time.deltaTime;
         characterController.Move(velocity * Time.deltaTime);

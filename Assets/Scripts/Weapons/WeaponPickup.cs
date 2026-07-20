@@ -13,14 +13,17 @@ public class WeaponPickup : MonoBehaviour
     private GameObject playerObj;
     private static WeaponPickup currentPromptOwner;
 
+    // Mobile pickup button reads this to know what to pick up.
+    // It is set to 'this' when the player looks at this weapon,
+    // and cleared when they look away.
+    public static WeaponPickup CurrentPickupTarget { get; private set; }
+
     void Start()
     {
         playerObj = GameObject.FindGameObjectWithTag("Player");
 
         if (actionText == null)
-        {
             actionText = GameObject.Find("ActionText");
-        }
 
         DisableFloorWeaponScripts();
         AutoAssignConnections();
@@ -49,21 +52,25 @@ public class WeaponPickup : MonoBehaviour
             return;
         }
 
+        // Player is close, looking, and unarmed — show prompt
         currentPromptOwner = this;
+        CurrentPickupTarget = this;
         if (actionText != null) actionText.SetActive(true);
 
+        // Keyboard pickup (E key) still works as before
         if (Input.GetKeyDown(KeyCode.E))
-        {
             ExecutePickup();
-        }
+    }
+
+    // Called by MobileControls.OnPickupButton()
+    public void TryPickup()
+    {
+        ExecutePickup();
     }
 
     void ExecutePickup()
     {
-        if (PlayerHasEquippedWeapon())
-        {
-            return;
-        }
+        if (PlayerHasEquippedWeapon()) return;
 
         ClearPromptIfOwner();
 
@@ -94,12 +101,7 @@ public class WeaponPickup : MonoBehaviour
 
         WeaponFire[] weapons = weaponContainer.GetComponentsInChildren<WeaponFire>(true);
         foreach (WeaponFire weapon in weapons)
-        {
-            if (weapon.gameObject.activeInHierarchy && weapon.enabled)
-            {
-                return true;
-            }
-        }
+            if (weapon.gameObject.activeInHierarchy && weapon.enabled) return true;
 
         return false;
     }
@@ -112,7 +114,6 @@ public class WeaponPickup : MonoBehaviour
         foreach (Transform child in children)
         {
             if (child.name != weaponNameInHierarchy) continue;
-
             gunInHand = child.gameObject;
             gunMechanics = child.gameObject;
             return;
@@ -139,9 +140,7 @@ public class WeaponPickup : MonoBehaviour
 
         Transform[] children = playerObj.GetComponentsInChildren<Transform>(true);
         foreach (Transform child in children)
-        {
             if (child.name == "Weapon_Container") return child;
-        }
 
         return null;
     }
@@ -167,16 +166,10 @@ public class WeaponPickup : MonoBehaviour
         {
             if (actionText != null) actionText.SetActive(false);
             currentPromptOwner = null;
+            CurrentPickupTarget = null;
         }
     }
 
-    void OnDestroy()
-    {
-        ClearPromptIfOwner();
-    }
-
-    void OnDisable()
-    {
-        ClearPromptIfOwner();
-    }
+    void OnDestroy() { ClearPromptIfOwner(); }
+    void OnDisable() { ClearPromptIfOwner(); }
 }

@@ -5,11 +5,11 @@ using TMPro;
 public class WaveManager : MonoBehaviour
 {
     [Header("Wave Settings")]
-    public GameObject zombiePrefab;            // Your normal zombie (keep this filled in)
-    public GameObject[] extraEnemyPrefabs;     // Add ZombieExploder here in the Inspector
-    public int extraEnemiesStartWave = 3;      // Which wave the extra enemies start appearing
+    public GameObject zombiePrefab;
+    public GameObject[] extraEnemyPrefabs;
+    public int extraEnemiesStartWave = 3;
     [Range(0f, 1f)]
-    public float extraEnemyChance = 0.35f;     // 35% chance each spawn is an extra enemy type
+    public float extraEnemyChance = 0.35f;
 
     public Transform[] spawnPoints;
     public float timeBetweenSpawns = 1.5f;
@@ -59,7 +59,9 @@ public class WaveManager : MonoBehaviour
         }
     }
 
-    void StartNextWave()
+    // Public so MobileControls.OnStartWaveButton() can call it directly via SendMessage,
+    // and so StoreManager can also call it if needed.
+    public void StartNextWave()
     {
         waitingForPlayer = false;
         isWaveActive = true;
@@ -80,21 +82,16 @@ public class WaveManager : MonoBehaviour
         yield return new WaitForSeconds(0.5f);
 
         bool canSpawnExtra = currentWave >= extraEnemiesStartWave
-                             && extraEnemyPrefabs != null
-                             && extraEnemyPrefabs.Length > 0;
+                          && extraEnemyPrefabs != null
+                          && extraEnemyPrefabs.Length > 0;
 
         for (int i = 0; i < zombiesToSpawn; i++)
         {
             Transform spawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
 
-            // Pick which prefab to spawn
             GameObject prefabToSpawn = zombiePrefab;
-
             if (canSpawnExtra && Random.value < extraEnemyChance)
-            {
-                // Pick a random extra enemy type (e.g. ZombieExploder)
                 prefabToSpawn = extraEnemyPrefabs[Random.Range(0, extraEnemyPrefabs.Length)];
-            }
 
             if (prefabToSpawn != null)
                 Instantiate(prefabToSpawn, spawnPoint.position, spawnPoint.rotation);

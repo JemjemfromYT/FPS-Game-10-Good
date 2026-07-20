@@ -1,61 +1,124 @@
 using UnityEngine;
+using StarterAssets;
 
 public class MobileControls : MonoBehaviour
 {
-    [Header("References")]
+    [Header("Player References")]
     public CharacterController playerController;
     public Transform playerCamera;
-    [Tooltip("Drag in Weapon_Container (the parent of all your weapons)")]
     public GameObject weaponContainer;
     public VirtualJoystick joystick;
+    public StarterAssetsInputs starterInputs;
 
-    [Header("UI / Game Buttons")]
-    [Tooltip("Drag the StatsPanel GameObject (Tab key)")]
+    [Header("UI Panels")]
     public GameObject statsPanel;
-    [Tooltip("Drag the StorePanel GameObject (B key)")]
     public GameObject storePanel;
-    [Tooltip("Drag the WaveManager GameObject (P key)")]
-    public GameObject waveManager;
 
-    [Header("Button GameObjects (to auto-hide/show)")]
-    [Tooltip("Drag the START WAVE button GameObject here")]
+    [Header("Wave UI")]
+    public GameObject waveManager;
     public GameObject waveButton;
-    [Tooltip("Drag the STORE button GameObject here")]
     public GameObject storeButton;
-    [Tooltip("Drag PromptText (the cyan text CHILD inside WaveTextFolder)")]
     public GameObject promptText;
+
+    [Header("Context Buttons (auto-show/hide)")]
+    public GameObject pickupButton;
+    public GameObject dropButton;
+
+    [Header("Gun Buttons — hidden when no weapon")]
+    public GameObject[] gunOnlyButtons;
+
+    [Header("Store")]
+    public GameObject storeExitButton;
+
+    [Header("Hide when Store opens")]
+    public GameObject[] hideWhenStoreOpen;
 
     [Header("Feel")]
     public float moveSpeed = 4f;
     public float lookSensitivity = 0.15f;
 
-    private float _cameraPitch = 0f;
     private int _lookFingerId = -1;
     private Vector2 _lastLookPos;
-    private bool _statsOpen = false;
+    private bool _storeOpen = false;
+
+    void Start()
+    {
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        if (pickupButton != null) pickupButton.SetActive(false);
+        if (dropButton != null) dropButton.SetActive(false);
+        if (storeExitButton != null) storeExitButton.SetActive(false);
+    }
 
     void Update()
     {
-        // Force cursor visible every frame — overrides FPS controller re-locking
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
+        // If StoreManager closed the panel externally (e.g. after a purchase),
+        // sync our state so controls come back and exit button hides.
+        if (_storeOpen && storePanel != null && !storePanel.activeSelf)
+            CloseStore();
 
         HandleMovement();
         HandleLook();
         SyncWaveButtons();
+        SyncPickupDropButtons();
+        SyncGunButtons();
     }
-
-    // ── Auto-sync wave/store buttons with WaveManager's prompt text ──
 
     void SyncWaveButtons()
     {
         if (promptText == null) return;
-        bool show = promptText.activeSelf;
+        bool show = promptText.activeSelf && !_storeOpen;
         if (waveButton != null) waveButton.SetActive(show);
         if (storeButton != null) storeButton.SetActive(show);
     }
 
-    // ── Movement ────────────────────────────────────────────────────
+    void SyncPickupDropButtons()
+    {
+        if (pickupButton != null)
+            pickupButton.SetActive(WeaponPickup.CurrentPickupTarget != null);
+        if (dropButton != null)
+            dropButton.SetActive(PlayerHasEquippedWeapon());
+    }
+
+    void SyncGunButtons()
+    {
+        bool hasWeapon = PlayerHasEquippedWeapon();
+        foreach (GameObject btn in gunOnlyButtons)
+            if (btn != null) btn.SetActive(hasWeapon && !_storeOpen);
+    }
+
+    bool PlayerHasEquippedWeapon()
+    {
+        if (weaponContainer == null) return false;
+        foreach (WeaponFire w in weaponContainer.GetComponentsInChildren<WeaponFire>(true))
+            if (w.gameObject.activeInHierarchy && w.enabled) return true;
+        return false;
+    }
+
+    void OpenStore()
+    {
+        _storeOpen = true;
+        if (storePanel != null) storePanel.SetActive(true);
+        if (storeExitButton != null) storeExitButton.SetActive(true);
+        if (pickupButton != null) pickupButton.SetActive(false);
+        if (dropButton != null) dropButton.SetActive(false);
+        foreach (GameObject obj in hideWhenStoreOpen)
+            if (obj != null) obj.SetActive(false);
+    }
+
+    void CloseStore()
+    {
+        _storeOpen = false;
+        if (storePanel != null) storePanel.SetActive(false);
+        if (storeExitButton != null) storeExitButton.SetActive(false);
+        foreach (GameObject obj in hideWhenStoreOpen)
+            if (obj != null) obj.SetActive(true);
+
+        // StoreManager locks the cursor when it closes — keep it visible for mobile/PC testing
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+    }
 
     void HandleMovement()
     {
@@ -65,8 +128,6 @@ public class MobileControls : MonoBehaviour
         move.y = -9.8f;
         playerController.Move(move * moveSpeed * Time.deltaTime);
     }
-
-    // ── Look ────────────────────────────────────────────────────────
 
     void HandleLook()
     {
@@ -83,19 +144,32 @@ public class MobileControls : MonoBehaviour
             {
                 Vector2 delta = touch.position - _lastLookPos;
                 _lastLookPos = touch.position;
-                playerController.transform.Rotate(Vector3.up * delta.x * lookSensitivity);
-                _cameraPitch -= delta.y * lookSensitivity;
-                _cameraPitch = Mathf.Clamp(_cameraPitch, -80f, 80f);
-                if (playerCamera != null)
-                    playerCamera.localEulerAngles = new Vector3(_cameraPitch, 0f, 0f);
+
+                if (starterInputs != null)
+                {
+                    float dt = Mathf.Max(Time.deltaTime, 0.001f);
+                    starterInputs.LookInput(delta * lookSensitivity / dt);
+                }
+                else
+                {
+                    playerController.transform.Rotate(Vector3.up * delta.x * lookSensitivity);
+                    if (playerCamera != null)
+                    {
+                        Vector3 e = playerCamera.localEulerAngles;
+                        float p = e.x > 180f ? e.x - 360f : e.x;
+                        p = Mathf.Clamp(p - delta.y * lookSensitivity, -80f, 80f);
+                        playerCamera.localEulerAngles = new Vector3(p, 0f, 0f);
+                    }
+                }
             }
             else if ((touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled)
                      && touch.fingerId == _lookFingerId)
+            {
                 _lookFingerId = -1;
+                if (starterInputs != null) starterInputs.LookInput(Vector2.zero);
+            }
         }
     }
-
-    // ── Weapon buttons ───────────────────────────────────────────────
 
     public void OnFireButtonDown()
     {
@@ -111,46 +185,55 @@ public class MobileControls : MonoBehaviour
             weaponContainer.BroadcastMessage("Reload", SendMessageOptions.DontRequireReceiver);
     }
 
-    // E — pickup weapon (sent to player so its pickup raycast triggers)
-    public void OnPickupButton()
+    public void OnStatsButtonDown()
     {
-        if (playerController != null)
-            playerController.gameObject.BroadcastMessage("PickUp",
-                SendMessageOptions.DontRequireReceiver);
+        PlayerStatsDisplay.MobileHeld = true;
+        if (joystick != null) joystick.gameObject.SetActive(false);
     }
 
-    // Q — drop current weapon
-    public void OnDropButton()
+    public void OnStatsButtonUp()
     {
-        if (weaponContainer != null)
-            weaponContainer.BroadcastMessage("Drop", SendMessageOptions.DontRequireReceiver);
+        PlayerStatsDisplay.MobileHeld = false;
+        if (joystick != null && !_storeOpen) joystick.gameObject.SetActive(true);
     }
-
-    // ── Stats (Tab) — toggle open/close, refresh on open ────────────
-
-    public void OnStatsButton()
-    {
-        if (statsPanel == null) return;
-        _statsOpen = !_statsOpen;
-        statsPanel.SetActive(_statsOpen);
-        if (_statsOpen)
-            statsPanel.SendMessage("UpdateStatsDisplay",
-                SendMessageOptions.DontRequireReceiver);
-    }
-
-    // ── Store (B) ────────────────────────────────────────────────────
 
     public void OnStoreButton()
     {
-        if (storePanel != null)
-            storePanel.SetActive(!storePanel.activeSelf);
+        if (_storeOpen) CloseStore();
+        else OpenStore();
     }
 
-    // ── Start wave (P) ───────────────────────────────────────────────
+    public void OnExitStoreButton()
+    {
+        CloseStore();
+    }
 
     public void OnStartWaveButton()
     {
+        CloseStore();
         if (waveManager != null)
             waveManager.SendMessage("StartNextWave", SendMessageOptions.DontRequireReceiver);
     }
+
+    public void OnPickupButton()
+    {
+        WeaponPickup target = WeaponPickup.CurrentPickupTarget;
+        if (target != null) target.TryPickup();
+    }
+
+    public void OnDropButton()
+    {
+        if (weaponContainer == null) return;
+        foreach (WeaponDrop drop in weaponContainer.GetComponentsInChildren<WeaponDrop>(true))
+        {
+            if (drop != null && drop.gameObject.activeInHierarchy)
+            {
+                drop.Drop();
+                return;
+            }
+        }
+    }
+
+    public void OnSprintButtonDown() { PlayerStamina.MobileSprinting = true; }
+    public void OnSprintButtonUp() { PlayerStamina.MobileSprinting = false; }
 }
