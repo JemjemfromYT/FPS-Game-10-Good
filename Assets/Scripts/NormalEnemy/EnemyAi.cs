@@ -1,3 +1,14 @@
+// ============================================================
+//  EnemyAi.cs  —  UPDATED (replaces existing EnemyAi.cs)
+//  Place in: Assets/Scripts/EnemyAi.cs
+//
+//  WHAT CHANGED vs the original:
+//  One extra check in TakeDamage — if this enemy has a
+//  SplitterEnemy component, its TriggerSplit() is called on
+//  death instead of (or in addition to) the normal destroy.
+//  Everything else is identical to the original.
+// ============================================================
+
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -61,16 +72,32 @@ public class EnemyAi : MonoBehaviour
         health -= damage;
         bool isKillingBlow = health <= 0;
 
-        // --- EXPLODING ENEMY SUPPORT ---
-        // If this enemy has an ExplodingEnemy component, let it handle death
-        // instead of just destroying the object normally.
+        // --- DEATH CALLBACK: pick the right handler ---
+        // Priority: ExplodingEnemy > SplitterEnemy > default destroy
         System.Action deathCallback;
+
         ExplodingEnemy exploder = GetComponent<ExplodingEnemy>();
+        SplitterEnemy splitter = GetComponent<SplitterEnemy>();
+
         if (exploder != null)
+        {
+            // Exploding enemy handles its own destroy inside TriggerExplosion
             deathCallback = exploder.TriggerExplosion;
+        }
+        else if (splitter != null)
+        {
+            // Splitter spawns minis then destroys itself
+            deathCallback = () =>
+            {
+                splitter.TriggerSplit();
+                Destroy(gameObject);
+            };
+        }
         else
+        {
             deathCallback = () => Destroy(gameObject);
-        // --------------------------------
+        }
+        // -----------------------------------------------
 
         hurtVisual.PlayHitFlash(isKillingBlow, isKillingBlow ? deathCallback : null);
 
@@ -78,6 +105,9 @@ public class EnemyAi : MonoBehaviour
         {
             isDead = true;
             GlobalStats.money += 25;
+
+            if (agent != null && agent.isOnNavMesh)
+                agent.isStopped = true;
         }
     }
 }
