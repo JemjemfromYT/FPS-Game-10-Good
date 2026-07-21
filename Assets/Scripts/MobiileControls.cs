@@ -42,31 +42,31 @@ public class MobileControls : MonoBehaviour
 
     // ── cached refs ──
     private PlayerStamina _playerStamina;
+    private FireButton _fireButton;          // cached after injection
 
     private int _lookFingerId = -1;
     private Vector2 _lastLookPos;
     private bool _storeOpen = false;
-    private bool _isFiring = false;   // true while fire button is physically held
+
+    // ── fire button debounce ──────────────────────────────────────────────────
+    // Guards OnFireButtonDown() against the Unity Button.OnClick double-fire.
+    // OnClick fires AFTER OnPointerUp in the same frame, so Time.time matches.
+    private float _fireButtonUpTime = -999f;
+    private const float kFireBtnDebounce = 0.15f;
+    // ─────────────────────────────────────────────────────────────────────────
 
     void Start()
     {
-        // Lock to landscape immediately
         Screen.orientation = ScreenOrientation.LandscapeLeft;
-
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
-        // Cache stamina for sprint speed
         if (playerController != null)
             _playerStamina = playerController.GetComponent<PlayerStamina>();
 
-        // Disable WeaponFire's mouse/keyboard polling — mobile fire button
-        // calls Shoot() directly via FireButton.cs (IPointerDownHandler).
+        // Disable WeaponFire's mouse/keyboard polling on mobile.
         WeaponFire.MobileMode = true;
 
-        // Auto-inject FireButton onto the Fire button so OnPointerDown /
-        // OnPointerUp events work correctly. This means no Inspector setup
-        // is needed as long as your button is named "FireButton".
         InjectFireButton();
 
         if (pickupButton != null) pickupButton.SetActive(false);
@@ -82,6 +82,7 @@ public class MobileControls : MonoBehaviour
         FireButton fb = fireBtn.GetComponent<FireButton>();
         if (fb == null) fb = fireBtn.AddComponent<FireButton>();
         fb.mobileControls = this;
+        _fireButton = fb;   // cache so HandleAutoFire can read IsPointerDown
     }
 
     void OnDestroy()
@@ -111,18 +112,14 @@ public class MobileControls : MonoBehaviour
         if (joystick == null || playerController == null) return;
 
         Vector2 joyInput = new Vector2(joystick.Horizontal, joystick.Vertical);
-
-        // Tell PlayerStamina the joystick is active (keyboard axes are 0 on mobile).
         PlayerStamina.MobileJoystickInput = joyInput;
 
-        // Use the player's own transform so direction follows their look angle.
         Transform t = playerController.transform;
         Vector3 move = t.right * joyInput.x + t.forward * joyInput.y;
         move.y = -9.8f;
 
         float speed = (_playerStamina != null && _playerStamina.IsSprinting)
-            ? sprintSpeed
-            : moveSpeed;
+            ? sprintSpeed : moveSpeed;
 
         playerController.Move(move * speed * Time.deltaTime);
     }
@@ -152,7 +149,6 @@ public class MobileControls : MonoBehaviour
                 else
                 {
                     playerController.transform.Rotate(Vector3.up * delta.x * lookSensitivity);
-
                     if (playerCamera != null)
                     {
                         Vector3 e = playerCamera.localEulerAngles;
@@ -173,17 +169,30 @@ public class MobileControls : MonoBehaviour
 
     // ─────────────────────────── FIRE LOGIC ──────────────────────────────────
 
-    // Runs every frame while fire button is held.
-    // Automatic weapons (Mac10, M9-when-set-to-auto): keep shooting.
-    // Semi-auto (AK47, AWP, Shotgun): only the initial press fires; this exits early.
     void HandleAutoFire()
     {
-        if (!_isFiring || weaponContainer == null) return;
+        // ── KEY FIX ──────────────────────────────────────────────────────────
+        // Read IsPointerDown directly from FireButton instead of using _isFiring.
+        //
+        // _isFiring was a bool that could get STUCK true because Unity's
+        // Button.OnClick fired OnFireButtonDown() again AFTER OnPointerUp already
+        // reset it — leaving the Mac10 (and any other auto weapon) firing forever.
+        //
+        // IsPointerDown is set true only in OnPointerDown and cleared in
+        // OnPointerUp/OnPointerExit. It ALWAYS reflects whether a finger is
+        // physically touching the button right now — it cannot get stuck.
+        //
+        // This also fixes "pick up Mac10 and it fires by itself": when the player
+        // was NOT touching the fire button at pickup time, IsPointerDown is false,
+        // so auto-fire never starts regardless of which weapon is active.
+        // ─────────────────────────────────────────────────────────────────────
+        bool fingerIsDown = _fireButton != null && _fireButton.IsPointerDown;
+        if (!fingerIsDown || weaponContainer == null) return;
 
         WeaponFire active = GetActiveWeapon();
         if (active == null || !active.IsAutomatic) return;
 
-        // Shoot() guards against empty ammo and enforces fire rate internally.
+        // Shoot() enforces fire rate and ammo internally.
         active.Shoot();
     }
 
@@ -195,18 +204,25 @@ public class MobileControls : MonoBehaviour
         return null;
     }
 
-    // Called by FireButton.cs on PointerDown.
+    // Called by FireButton.cs on PointerDown — fires the initial shot.
     public void OnFireButtonDown()
     {
-        _isFiring = true;
-        // Fire once immediately on press regardless of mode (semi or auto).
+        // Debounce: reject calls that arrive within kFireBtnDebounce seconds of
+        // the last OnFireButtonUp().  Unity's Button.OnClick fires on RELEASE
+        // (after OnPointerUp) in the same frame, so Time.time - _fireButtonUpTime
+        // will be ~0 — safely blocked here even if onClick wasn't cleared.
+        if (Time.time - _fireButtonUpTime < kFireBtnDebounce) return;
+
+        // Fire one shot immediately on press (works for both semi and auto).
         GetActiveWeapon()?.Shoot();
     }
 
-    // Called by FireButton.cs on PointerUp and PointerExit.
+    // Called by FireButton.cs on PointerUp / PointerExit.
     public void OnFireButtonUp()
     {
-        _isFiring = false;
+        _fireButtonUpTime = Time.time;  // timestamp for debounce only
+        // Auto-fire is now governed by FireButton.IsPointerDown, so no _isFiring
+        // flag to clear here — HandleAutoFire() will stop on the very next frame.
     }
 
     // ─────────────────────────── UI SYNC ─────────────────────────────────────
