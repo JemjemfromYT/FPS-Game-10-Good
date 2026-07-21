@@ -1,3 +1,40 @@
+// ============================================================
+//  WeaponFire_FIXED.cs
+//  Replace Assets/Scripts/Weapons/WeaponFire.cs with this file.
+//
+//  BUG FIXED: "No damage when shooting while walking backward"
+//  ---------------------------------------------------------------
+//  ROOT CAUSE:
+//  Unity's Cinemachine camera updates in LateUpdate, but Shoot()
+//  runs during Update. When you walk BACKWARD the CharacterController
+//  already moves the player capsule backward (in Update → Move()),
+//  but the camera hasn't caught up yet (it catches up in LateUpdate).
+//  This puts the camera IN FRONT OF the player's own capsule for
+//  one frame, so Physics.Raycast immediately hits the front face of
+//  the player's own CharacterController collider instead of the enemy.
+//
+//  When walking FORWARD the capsule moves ahead of the camera, so the
+//  ray starts inside/behind the capsule — Unity ignores colliders the
+//  ray originates inside, so it passes through harmlessly.
+//
+//  THE FIX:
+//  1. A new serialized LayerMask field "shootLayerMask" (defaults to
+//     Everything) is passed to Physics.Raycast so the player's own
+//     layer can be excluded in the Inspector.
+//  2. A "Player" tag check skips self-hits even if the layer is not
+//     configured yet — belt-and-suspenders safety net.
+//
+//  HOW TO SET UP IN UNITY (one-time, takes 30 seconds):
+//  a) In Edit → Project Settings → Tags and Layers, add a new layer
+//     called "Player" (e.g. Layer 6).
+//  b) Select your Player GameObject in the Hierarchy and set its Layer
+//     to "Player" (apply to children too if asked).
+//  c) Select your weapon GameObject, find the WeaponFire component in
+//     the Inspector, and in the "Shoot Settings" section uncheck the
+//     "Player" layer from the Shoot Layer Mask field.
+//  Done. The raycast will now skip the player capsule entirely.
+// ============================================================
+
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -38,6 +75,17 @@ public class WeaponFire : MonoBehaviour
     [SerializeField] float bulletTracerLifetime = 0.05f;
     [SerializeField] float bulletTracerMaxDistance = 120f;
     [SerializeField] Transform bulletTracerOrigin;
+
+    // ── BUG FIX: backward-walking no-damage ──────────────────────────────────
+    // Set this in the Inspector: uncheck the "Player" layer so the raycast
+    // never hits the player's own CharacterController capsule.
+    // Defaults to ~0 (Everything) so the weapon works out-of-the-box even
+    // before you configure the layer — the tag check below acts as a fallback.
+    [Header("Shoot Settings")]
+    [Tooltip("Layers the shoot raycast can hit. UNCHECK the Player layer to fix " +
+             "no-damage when walking backward (camera leads the capsule by one frame).")]
+    [SerializeField] LayerMask shootLayerMask = ~0;
+    // ─────────────────────────────────────────────────────────────────────────
 
     private float nextFireTime = 0f;
     private bool isReloading = false;
@@ -218,8 +266,23 @@ public class WeaponFire : MonoBehaviour
         for (int i = 0; i < hitCount; i++)
         {
             Vector3 direction = GetSpreadDirection(cameraTransform);
+
+            // ── BUG FIX: backward-walking no-damage ──────────────────────────
+            // Pass shootLayerMask so the player's own CharacterController
+            // capsule is excluded from the raycast. Without this mask,
+            // Cinemachine's one-frame camera lag (LateUpdate vs Update) causes
+            // the camera to sit just in front of the capsule when walking
+            // backward, and the ray hits the player's own collider first.
             bool hasHit = Physics.Raycast(cameraTransform.position, direction,
-                                          out RaycastHit hit, Mathf.Infinity);
+                                          out RaycastHit hit, Mathf.Infinity,
+                                          shootLayerMask);
+
+            // Secondary safety net: skip if we somehow still hit the player
+            // (works even when the "Player" layer is not configured yet).
+            if (hasHit && hit.collider.CompareTag("Player"))
+                hasHit = false;
+            // ─────────────────────────────────────────────────────────────────
+
             Vector3 tracerEnd = hasHit
                 ? hit.point
                 : cameraTransform.position + direction * bulletTracerMaxDistance;

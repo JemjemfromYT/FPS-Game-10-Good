@@ -406,6 +406,9 @@ MonoBehaviour:
   bulletTracerLifetime: 0.05
   bulletTracerMaxDistance: 120
   bulletTracerOrigin: {fileID: 1451148344}
+  shootLayerMask:
+    serializedVersion: 2
+    m_Bits: 55
 --- !u!114 &84459532
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -972,6 +975,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 85
       objectReference: {fileID: 0}
+    - target: {fileID: 615212370373019896, guid: 2378e2f201ebe1044b5093bdcf3b64df, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     - target: {fileID: 913683155074082623, guid: 2378e2f201ebe1044b5093bdcf3b64df, type: 3}
       propertyPath: fireRate
       value: 0.2
@@ -1016,6 +1023,10 @@ PrefabInstance:
       propertyPath: bulletTracerPrefab
       value: 
       objectReference: {fileID: 353584391469299464, guid: 9f61daffb7a41de40ac5619f69b25adb, type: 3}
+    - target: {fileID: 913683155074082623, guid: 2378e2f201ebe1044b5093bdcf3b64df, type: 3}
+      propertyPath: shootLayerMask.m_Bits
+      value: 55
+      objectReference: {fileID: 0}
     - target: {fileID: 4433063586696383659, guid: 2378e2f201ebe1044b5093bdcf3b64df, type: 3}
       propertyPath: actionText
       value: 
@@ -1028,6 +1039,14 @@ PrefabInstance:
       propertyPath: playerCamera
       value: 
       objectReference: {fileID: 240326455}
+    - target: {fileID: 5041969525006891830, guid: 2378e2f201ebe1044b5093bdcf3b64df, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 7138125945440125916, guid: 2378e2f201ebe1044b5093bdcf3b64df, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     - target: {fileID: 8133490554293353137, guid: 2378e2f201ebe1044b5093bdcf3b64df, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0.397
@@ -1043,6 +1062,10 @@ PrefabInstance:
     - target: {fileID: 8904784404272259083, guid: 2378e2f201ebe1044b5093bdcf3b64df, type: 3}
       propertyPath: m_Name
       value: Weapon_Ak47
+      objectReference: {fileID: 0}
+    - target: {fileID: 8904784404272259083, guid: 2378e2f201ebe1044b5093bdcf3b64df, type: 3}
+      propertyPath: m_Layer
+      value: 7
       objectReference: {fileID: 0}
     - target: {fileID: 8904784404272259083, guid: 2378e2f201ebe1044b5093bdcf3b64df, type: 3}
       propertyPath: m_IsActive
@@ -1724,13 +1747,25 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: -313575463605003453, guid: a896a5a4659ce6a4fa92cf398087cc7d, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: a896a5a4659ce6a4fa92cf398087cc7d, type: 3}
       propertyPath: m_Name
       value: Weapon_ChromeShotgun
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: a896a5a4659ce6a4fa92cf398087cc7d, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: a896a5a4659ce6a4fa92cf398087cc7d, type: 3}
       propertyPath: m_IsActive
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8656889962378858214, guid: a896a5a4659ce6a4fa92cf398087cc7d, type: 3}
+      propertyPath: m_Layer
+      value: 7
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -3342,9 +3377,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MobileControls
   playerController: {fileID: 1583848985}
   playerCamera: {fileID: 240326455}
-  weaponContainer: {fileID: 589866345}
   joystick: {fileID: 1376446785}
   starterInputs: {fileID: 1583848982}
+  weaponContainer: {fileID: 589866345}
+  fireButtonObject: {fileID: 1524639631}
   statsPanel: {fileID: 1591629561}
   storePanel: {fileID: 1866082441}
   waveManager: {fileID: 2057573267}
@@ -3356,7 +3392,6 @@ MonoBehaviour:
   gunOnlyButtons:
   - {fileID: 1524639631}
   - {fileID: 487793460}
-  fireButtonObject: {fileID: 1524639631}
   storeExitButton: {fileID: 2111036796}
   hideWhenStoreOpen:
   - {fileID: 1376446781}
@@ -4214,7 +4249,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 555331515}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Muzzle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4628,7 +4663,7 @@ GameObject:
   m_Component:
   - component: {fileID: 589866346}
   - component: {fileID: 589866348}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Weapon_Container
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -7472,13 +7507,37 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 85
       objectReference: {fileID: 0}
+    - target: {fileID: -7291527547282577274, guid: a5744ae679a22004ab153718fca02648, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: -6673769106757581831, guid: a5744ae679a22004ab153718fca02648, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: -6318229794370237674, guid: a5744ae679a22004ab153718fca02648, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     - target: {fileID: -2969626744426119152, guid: a5744ae679a22004ab153718fca02648, type: 3}
       propertyPath: m_LocalPosition.y
       value: -3.72529e-11
       objectReference: {fileID: 0}
+    - target: {fileID: -2750187996632690811, guid: a5744ae679a22004ab153718fca02648, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: -173876267803274250, guid: a5744ae679a22004ab153718fca02648, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: a5744ae679a22004ab153718fca02648, type: 3}
       propertyPath: m_Name
       value: Weapon_AWP
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: a5744ae679a22004ab153718fca02648, type: 3}
+      propertyPath: m_Layer
+      value: 7
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: a5744ae679a22004ab153718fca02648, type: 3}
       propertyPath: m_IsActive
@@ -8166,7 +8225,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1064333034}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Muzzle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -9241,6 +9300,9 @@ MonoBehaviour:
   bulletTracerLifetime: 0.05
   bulletTracerMaxDistance: 120
   bulletTracerOrigin: {fileID: 555331515}
+  shootLayerMask:
+    serializedVersion: 2
+    m_Bits: 55
 --- !u!114 &1353646435
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9916,6 +9978,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: MainCamera
       objectReference: {fileID: 0}
+    - target: {fileID: 9005220659476430823, guid: 2d3a85ecde41a8246a79669975912b74, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -9939,7 +10005,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1451148344}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Muzzle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -10145,6 +10211,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 5393215578589016642, guid: c5efc39a8aaf6e64ea40e9ad573e9b47, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     - target: {fileID: 5393215578589016655, guid: c5efc39a8aaf6e64ea40e9ad573e9b47, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
@@ -10180,6 +10250,10 @@ PrefabInstance:
     - target: {fileID: 8616685848737228372, guid: c5efc39a8aaf6e64ea40e9ad573e9b47, type: 3}
       propertyPath: m_Name
       value: FPSController
+      objectReference: {fileID: 0}
+    - target: {fileID: 8616685848737228372, guid: c5efc39a8aaf6e64ea40e9ad573e9b47, type: 3}
+      propertyPath: m_Layer
+      value: 7
       objectReference: {fileID: 0}
     - target: {fileID: 8616685848737228382, guid: c5efc39a8aaf6e64ea40e9ad573e9b47, type: 3}
       propertyPath: m_StepOffset
@@ -10255,7 +10329,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1508548330}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Muzzle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -14838,6 +14912,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 645903461554055636, guid: fa9e1be43ac9c104287c65b36071d392, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 1900755739907777828, guid: fa9e1be43ac9c104287c65b36071d392, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     - target: {fileID: 2669589072566375179, guid: fa9e1be43ac9c104287c65b36071d392, type: 3}
       propertyPath: fireRate
       value: 1
@@ -14878,13 +14960,29 @@ PrefabInstance:
       propertyPath: bulletTracerPrefab
       value: 
       objectReference: {fileID: 353584391469299464, guid: 9f61daffb7a41de40ac5619f69b25adb, type: 3}
+    - target: {fileID: 2669589072566375179, guid: fa9e1be43ac9c104287c65b36071d392, type: 3}
+      propertyPath: shootLayerMask.m_Bits
+      value: 55
+      objectReference: {fileID: 0}
     - target: {fileID: 3918943271304953144, guid: fa9e1be43ac9c104287c65b36071d392, type: 3}
       propertyPath: m_Name
       value: Weapon_M9
       objectReference: {fileID: 0}
     - target: {fileID: 3918943271304953144, guid: fa9e1be43ac9c104287c65b36071d392, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 3918943271304953144, guid: fa9e1be43ac9c104287c65b36071d392, type: 3}
       propertyPath: m_IsActive
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5999719114077932684, guid: fa9e1be43ac9c104287c65b36071d392, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 7201275697014305509, guid: fa9e1be43ac9c104287c65b36071d392, type: 3}
+      propertyPath: m_Layer
+      value: 7
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -15033,6 +15131,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 589866346}
     m_Modifications:
+    - target: {fileID: 798854542479628894, guid: 8950259a915e5ad4e8685dd70a1657d8, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 943172531212078928, guid: 8950259a915e5ad4e8685dd70a1657d8, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     - target: {fileID: 1407816616353467887, guid: 8950259a915e5ad4e8685dd70a1657d8, type: 3}
       propertyPath: actionText
       value: 
@@ -15046,8 +15152,16 @@ PrefabInstance:
       value: Weapon_Mac10
       objectReference: {fileID: 0}
     - target: {fileID: 1553562872952017863, guid: 8950259a915e5ad4e8685dd70a1657d8, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 1553562872952017863, guid: 8950259a915e5ad4e8685dd70a1657d8, type: 3}
       propertyPath: m_IsActive
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1995690994962902925, guid: 8950259a915e5ad4e8685dd70a1657d8, type: 3}
+      propertyPath: m_Layer
+      value: 7
       objectReference: {fileID: 0}
     - target: {fileID: 2217052631421553021, guid: 8950259a915e5ad4e8685dd70a1657d8, type: 3}
       propertyPath: m_LocalPosition.x
@@ -15089,6 +15203,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4487319942424134591, guid: 8950259a915e5ad4e8685dd70a1657d8, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 5478799834438043402, guid: 8950259a915e5ad4e8685dd70a1657d8, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     - target: {fileID: 6601845457351637123, guid: 8950259a915e5ad4e8685dd70a1657d8, type: 3}
       propertyPath: fireRate
       value: 0.05
@@ -15121,6 +15243,14 @@ PrefabInstance:
       propertyPath: emptyGunSound
       value: 
       objectReference: {fileID: 1561612609}
+    - target: {fileID: 6601845457351637123, guid: 8950259a915e5ad4e8685dd70a1657d8, type: 3}
+      propertyPath: shootLayerMask.m_Bits
+      value: 55
+      objectReference: {fileID: 0}
+    - target: {fileID: 8896049944425405896, guid: 8950259a915e5ad4e8685dd70a1657d8, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

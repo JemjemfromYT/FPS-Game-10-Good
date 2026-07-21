@@ -1,26 +1,39 @@
+// ============================================================
+// AI INSTRUCTIONS — READ BEFORE EDITING THIS FILE
+// ============================================================
+// 1. COMMENTS: Add a comment to every section, method, and
+//    non-obvious line. NEVER remove or shorten existing
+//    comments — only add or update them.
+// 2. DELIVER AS FILE: Always save changes to a .txt file and
+//    share that file. Never paste the full code in the chat.
+// ============================================================
+
 using UnityEngine;
 using UnityEngine.EventSystems;
 
 /// <summary>
-/// Attached to the "FireButton" UI button by MobileControls.FindFireButton().
+/// Attached to the FireButton GameObject at runtime by MobileControls.InitFireButton().
 ///
-/// Jobs:
-///   1. Clear the Inspector On Click () list so it never calls OnFireButtonDown
-///      on RELEASE (Unity's onClick fires on pointer-up, not pointer-down).
-///   2. Call OnFireButtonDown() the instant the finger TOUCHES the button
-///      (IPointerDownHandler) — fixes the stuck-firing bug caused by the old
-///      onClick path firing on release.
-///   3. Call OnFireButtonUp() when the finger lifts so _isFiring is always
-///      cleared (IPointerUpHandler).
+/// Unity's built-in Button component fires its onClick on pointer-UP (release),
+/// not pointer-DOWN (press). For a fire button this causes two problems:
+///   1. Automatic weapons — pressing and holding never fires because onClick
+///      only triggers on release, so the "held" state is never set.
+///   2. Stuck firing — onClick sets _isFiring on release but nothing ever
+///      clears it, so automatic weapons fire non-stop after a single tap.
+///
+/// This script replaces onClick with proper IPointerDownHandler / IPointerUpHandler
+/// so MobileControls gets an accurate pressed/released signal on the correct frame.
+///
+/// The onClick list is cleared in Awake() to make sure the old wiring can never
+/// run alongside the new pointer-event wiring.
 /// </summary>
 public class FireButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
 {
+    /// <summary>Set by MobileControls.InitFireButton() immediately after AddComponent.</summary>
     [HideInInspector] public MobileControls mobileControls;
 
     void Awake()
     {
-        // Remove the Inspector On Click () entry so it can never leave
-        // _isFiring stuck true by firing on pointer-up.
         var button = GetComponent<UnityEngine.UI.Button>();
         if (button != null)
             button.onClick = new UnityEngine.UI.Button.ButtonClickedEvent();
