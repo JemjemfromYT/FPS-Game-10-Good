@@ -5558,7 +5558,7 @@ struct U3CSpawnZombiesU3Ed__17_t0431AF3127E29996759BF2CD94A220B371549637  : publ
 	bool ___U3CcanSpawnExtraU3E5__2;
 	int32_t ___U3CiU3E5__3;
 };
-struct U3CReloadU3Ed__64_t2D0A920A7CF35AEA2CCC078D4EF7F98BF82362E8  : public RuntimeObject
+struct U3CReloadU3Ed__65_tE369DCFED320C8F22E255DFAE9B9EA3090C7006F  : public RuntimeObject
 {
 	int32_t ___U3CU3E1__state;
 	RuntimeObject* ___U3CU3E2__current;
@@ -46468,9 +46468,10 @@ struct MobileControls_t4DD5151FD3130CC1D777CC0FE86814BC38AA299D  : public MonoBe
 {
 	CharacterController_t847C1A2719F60547D7D6077B648D6CE2D1EF3A6A* ___playerController;
 	Transform_tB27202C6F4E36D225EE28A13E4D662BF99785DB1* ___playerCamera;
-	GameObject_t76FEDD663AB33C991A9C9A23129337651094216F* ___weaponContainer;
 	VirtualJoystick_t1D14598E2C21457ADB7C58C2794F9ECA189278E9* ___joystick;
 	StarterAssetsInputs_t133BB053DB5E88FF96AD7A46722CFDD182A8B657* ___starterInputs;
+	GameObject_t76FEDD663AB33C991A9C9A23129337651094216F* ___weaponContainer;
+	GameObject_t76FEDD663AB33C991A9C9A23129337651094216F* ___fireButtonObject;
 	GameObject_t76FEDD663AB33C991A9C9A23129337651094216F* ___statsPanel;
 	GameObject_t76FEDD663AB33C991A9C9A23129337651094216F* ___storePanel;
 	GameObject_t76FEDD663AB33C991A9C9A23129337651094216F* ___waveManager;
@@ -46480,7 +46481,6 @@ struct MobileControls_t4DD5151FD3130CC1D777CC0FE86814BC38AA299D  : public MonoBe
 	GameObject_t76FEDD663AB33C991A9C9A23129337651094216F* ___pickupButton;
 	GameObject_t76FEDD663AB33C991A9C9A23129337651094216F* ___dropButton;
 	GameObjectU5BU5D_tFF67550DFCE87096D7A3734EA15B75896B2722CF* ___gunOnlyButtons;
-	GameObject_t76FEDD663AB33C991A9C9A23129337651094216F* ___fireButtonObject;
 	GameObject_t76FEDD663AB33C991A9C9A23129337651094216F* ___storeExitButton;
 	GameObjectU5BU5D_tFF67550DFCE87096D7A3734EA15B75896B2722CF* ___hideWhenStoreOpen;
 	float ___moveSpeed;
@@ -47229,6 +47229,7 @@ struct WeaponFire_t084403F97236CA9337DB8FC04E9EB8AB0DC02C4C  : public MonoBehavi
 	float ___bulletTracerLifetime;
 	float ___bulletTracerMaxDistance;
 	Transform_tB27202C6F4E36D225EE28A13E4D662BF99785DB1* ___bulletTracerOrigin;
+	LayerMask_t97CB6BDADEDC3D6423C7BCFEA7F86DA2EC6241DB ___shootLayerMask;
 	float ___nextFireTime;
 	bool ___isReloading;
 	Animator_t8A52E42AE54F76681838FE9E632683EF3952E883* ___gunAnimator;
@@ -60699,7 +60700,7 @@ const Il2CppTypeDefinitionSizes g_typeDefinitionSize8946 = { sizeof(WeaponConfig
 IL2CPP_EXTERN_C_CONST Il2CppTypeDefinitionSizes g_typeDefinitionSize8947;
 const Il2CppTypeDefinitionSizes g_typeDefinitionSize8947 = { sizeof(WeaponDefinitions_t356895119518263AFAD3B538927F471275468F08), -1, sizeof(WeaponDefinitions_t356895119518263AFAD3B538927F471275468F08_StaticFields), 0 };
 IL2CPP_EXTERN_C_CONST Il2CppTypeDefinitionSizes g_typeDefinitionSize8948;
-const Il2CppTypeDefinitionSizes g_typeDefinitionSize8948 = { sizeof(U3CReloadU3Ed__64_t2D0A920A7CF35AEA2CCC078D4EF7F98BF82362E8), -1, 0, 0 };
+const Il2CppTypeDefinitionSizes g_typeDefinitionSize8948 = { sizeof(U3CReloadU3Ed__65_tE369DCFED320C8F22E255DFAE9B9EA3090C7006F), -1, 0, 0 };
 IL2CPP_EXTERN_C_CONST Il2CppTypeDefinitionSizes g_typeDefinitionSize8949;
 const Il2CppTypeDefinitionSizes g_typeDefinitionSize8949 = { sizeof(WeaponFire_t084403F97236CA9337DB8FC04E9EB8AB0DC02C4C), -1, sizeof(WeaponFire_t084403F97236CA9337DB8FC04E9EB8AB0DC02C4C_StaticFields), 0 };
 IL2CPP_EXTERN_C_CONST Il2CppTypeDefinitionSizes g_typeDefinitionSize8950;
