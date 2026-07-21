@@ -27,6 +27,10 @@ public class MobileControls : MonoBehaviour
     [Header("Gun Buttons — hidden when no weapon")]
     public GameObject[] gunOnlyButtons;
 
+    [Header("Fire Button")]
+    [Tooltip("Drag the FireButton GameObject here. Avoids any name-search fragility.")]
+    public GameObject fireButtonObject;
+
     [Header("Store")]
     public GameObject storeExitButton;
 
@@ -95,9 +99,19 @@ public class MobileControls : MonoBehaviour
     {
         if (_fireBtnRect != null) return; // already found
 
-        // GameObject.Find only sees active objects. If the canvas is inactive
-        // at Start() time this returns null — Update() retries every frame.
-        GameObject obj = GameObject.Find("FireButton");
+        // Use the Inspector-assigned reference first (most reliable — no name dependency).
+        // If not assigned, fall back to name search. The scene has the button named
+        // "FireButton " (trailing space), so we try several common variations.
+        GameObject obj = fireButtonObject;
+
+        if (obj == null)
+        {
+            obj = GameObject.Find("FireButton")    // no space
+               ?? GameObject.Find("FireButton ")  // trailing space (scene has this)
+               ?? GameObject.Find("Fire Button")  // space in middle
+               ?? GameObject.Find("BtnFire");
+        }
+
         if (obj == null) return;
 
         _fireBtnRect = obj.GetComponent<RectTransform>();
