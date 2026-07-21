@@ -4,9 +4,14 @@ using UnityEngine.EventSystems;
 /// <summary>
 /// Attached to the "FireButton" UI button by MobileControls.FindFireButton().
 ///
-/// Uses IPointerDownHandler + IPointerUpHandler so the MobileControls
-/// receives the EXACT moment the finger touches and lifts — no stuck flags,
-/// no delayed onClick events.
+/// Jobs:
+///   1. Clear the Inspector On Click () list so it never calls OnFireButtonDown
+///      on RELEASE (Unity's onClick fires on pointer-up, not pointer-down).
+///   2. Call OnFireButtonDown() the instant the finger TOUCHES the button
+///      (IPointerDownHandler) — fixes the stuck-firing bug caused by the old
+///      onClick path firing on release.
+///   3. Call OnFireButtonUp() when the finger lifts so _isFiring is always
+///      cleared (IPointerUpHandler).
 /// </summary>
 public class FireButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
 {
@@ -14,20 +19,20 @@ public class FireButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
 
     void Awake()
     {
-        // Clear the Inspector On Click () list so it can never call
-        // OnFireButtonDown on RELEASE and leave _isFiring stuck true.
+        // Remove the Inspector On Click () entry so it can never leave
+        // _isFiring stuck true by firing on pointer-up.
         var button = GetComponent<UnityEngine.UI.Button>();
         if (button != null)
             button.onClick = new UnityEngine.UI.Button.ButtonClickedEvent();
     }
 
-    // Called the instant the finger touches the button.
+    /// <summary>Finger touched the button — begin firing.</summary>
     public void OnPointerDown(PointerEventData eventData)
     {
         mobileControls?.OnFireButtonDown();
     }
 
-    // Called the instant the finger lifts off the button.
+    /// <summary>Finger lifted off the button — stop firing.</summary>
     public void OnPointerUp(PointerEventData eventData)
     {
         mobileControls?.OnFireButtonUp();
