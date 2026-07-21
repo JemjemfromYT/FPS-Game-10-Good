@@ -36,26 +36,34 @@ public class MobileControls : MonoBehaviour
     [Header("Feel")]
     public float moveSpeed = 4f;
     public float sprintSpeed = 8.5f;
-
     public float lookSensitivity = 0.3f;
 
-    // ── cached refs ──
+    // ── cached refs ──────────────────────────────────────────────────────────
     private PlayerStamina _playerStamina;
 
-    // The FireButton component on the Fire UI button.
-    // Set by InjectFireButton() in Start() and retried every frame in Update()
-    // until found — handles the case where the button was inactive at Start time.
-    private FireButton _fireButton;
+    // ── fire button — found by name, retried every frame until found ─────────
+    // We do NOT use FireButton.cs pointer events. Instead we poll Input.touches
+    // each frame and check whether any touch falls inside the button's rect.
+    // This is 100% reliable: no EventSystem, no component injection, no flags
+    // that can get stuck.
+    private RectTransform _fireBtnRect;
+    private Canvas _fireBtnCanvas;
 
+    // Set true for the exact frame a new touch BEGINS on the fire button.
+    // Used to fire one initial shot (correct for both semi-auto and full-auto).
+    private bool _fireTouchBegan;
+
+    // True every frame at least one finger is touching the fire button area.
+    // Used by HandleAutoFire() to keep firing automatic weapons.
+    private bool _fireTouchActive;
+
+    // ── look ─────────────────────────────────────────────────────────────────
     private int _lookFingerId = -1;
     private Vector2 _lastLookPos;
+
+    // ── misc ─────────────────────────────────────────────────────────────────
     private bool _storeOpen = false;
 
-    // ── fire state ────────────────────────────────────────────────────────────
-    // _isFiring is set TRUE in OnFireButtonDown() and FALSE in OnFireButtonUp().
-    // HandleAutoFire() also cross-checks FireButton.IsPointerDown (physical touch)
-    // so the auto-fire loop stops the instant the finger lifts regardless of flags.
-    private bool _isFiring = false;
     // ─────────────────────────────────────────────────────────────────────────
 
     void Start()
@@ -69,33 +77,40 @@ public class MobileControls : MonoBehaviour
 
         WeaponFire.MobileMode = true;
 
-        // First injection attempt — may fail if FireButton is inside an
-        // inactive parent Canvas. Update() retries every frame until found.
-        InjectFireButton();
+        // First attempt — may fail if canvas is inactive at Start time.
+        // Update() retries every frame until the button is found.
+        FindFireButton();
 
         if (pickupButton != null) pickupButton.SetActive(false);
         if (dropButton != null) dropButton.SetActive(false);
         if (storeExitButton != null) storeExitButton.SetActive(false);
     }
 
-    // Called by FireButton.Start() so it can register itself with us even when
-    // InjectFireButton() couldn't find it (e.g. it was inactive at the time).
-    public void RegisterFireButton(FireButton fb)
+    // Finds the "FireButton" GameObject, caches its RectTransform and parent
+    // Canvas, then kills the Inspector onClick so it can't call
+    // OnFireButtonDown() on release. Safe to call every frame — bails early
+    // once the rect is cached.
+    void FindFireButton()
     {
-        _fireButton = fb;
-    }
+        if (_fireBtnRect != null) return;   // already found
 
-    void InjectFireButton()
-    {
-        // GameObject.Find only searches active objects. If the button lives inside
-        // an inactive Canvas at startup this will return null — Update() retries.
-        GameObject fireBtn = GameObject.Find("FireButton");
-        if (fireBtn == null) return;
+        GameObject obj = GameObject.Find("FireButton");
+        if (obj == null) return;
 
-        FireButton fb = fireBtn.GetComponent<FireButton>();
-        if (fb == null) fb = fireBtn.AddComponent<FireButton>();
-        fb.mobileControls = this;
-        _fireButton = fb;
+        _fireBtnRect = obj.GetComponent<RectTransform>();
+        _fireBtnCanvas = obj.GetComponentInParent<Canvas>();
+
+        // Silence the Inspector On Click () entry by replacing the entire
+        // event object with a fresh empty one. This runs once — any subsequent
+        // Inspector-wired calls to OnFireButtonDown() via onClick are gone.
+        var btn = obj.GetComponent<UnityEngine.UI.Button>();
+        if (btn != null)
+            btn.onClick = new UnityEngine.UI.Button.ButtonClickedEvent();
+
+        // Also ensure the FireButton.cs stub is present (it does the same
+        // onClick clear in Awake as an extra safety net).
+        if (obj.GetComponent<FireButton>() == null)
+            obj.AddComponent<FireButton>();
     }
 
     void OnDestroy()
@@ -107,11 +122,8 @@ public class MobileControls : MonoBehaviour
 
     void Update()
     {
-        // Retry injection every frame until we have a FireButton reference.
-        // This handles the common case where the UI Canvas (and FireButton inside
-        // it) is inactive when Start() first runs.
-        if (_fireButton == null)
-            InjectFireButton();
+        // Retry finding the fire button until found (handles inactive canvas at Start).
+        if (_fireBtnRect == null) FindFireButton();
 
         if (_storeOpen && storePanel != null && !storePanel.activeSelf)
             CloseStore();
@@ -186,52 +198,89 @@ public class MobileControls : MonoBehaviour
         }
     }
 
-    // ─────────────────────────── FIRE LOGIC ──────────────────────────────────
+    // ─────────────────────────── FIRE ────────────────────────────────────────
+
+    // Polls every active touch and checks whether it sits inside the FireButton's
+    // screen-space rect. Updates _fireTouchActive and _fireTouchBegan.
+    //
+    // Why direct touch polling instead of EventSystem pointer events?
+    //   • EventSystem pointer events require the FireButton.cs component to be
+    //     successfully injected at runtime — which fails silently when the Canvas
+    //     is inactive at Start time.
+    //   • IPointerExitHandler fires spuriously on mobile when the thumb moves
+    //     even slightly, resetting the fire state mid-hold.
+    //   • Input.touches + RectTransformUtility never has either problem.
+    void PollFireTouch()
+    {
+        _fireTouchActive = false;
+        _fireTouchBegan = false;
+
+        if (_fireBtnRect == null) return;
+
+        // For ScreenSpaceOverlay canvases (the standard mobile setup) the camera
+        // argument must be null. For ScreenSpaceCamera / WorldSpace, use the
+        // canvas's assigned world camera.
+        Camera cam = (_fireBtnCanvas != null
+                      && _fireBtnCanvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            ? _fireBtnCanvas.worldCamera
+            : null;
+
+        foreach (Touch t in Input.touches)
+        {
+            if (t.phase == TouchPhase.Canceled) continue;
+
+            if (RectTransformUtility.RectangleContainsScreenPoint(
+                    _fireBtnRect, t.position, cam))
+            {
+                _fireTouchActive = true;
+                if (t.phase == TouchPhase.Began)
+                    _fireTouchBegan = true;
+                break;  // one finger on the button is enough
+            }
+        }
+    }
 
     void HandleAutoFire()
     {
-        // Stop firing the moment the finger is no longer physically down.
-        // IsPointerDown is read directly from the FireButton component and is set
-        // by OnPointerDown / cleared by OnPointerUp — it cannot get stuck.
-        // _isFiring is a backup flag for the frame where IsPointerDown is not yet
-        // available (e.g. _fireButton still null during injection retry).
-        bool physicallyHeld = _fireButton != null && _fireButton.IsPointerDown;
+        PollFireTouch();
 
-        // If we have the FireButton reference, TRUST its physical state only.
-        // This prevents _isFiring getting stuck from any old OnClick wiring.
-        // If we don't have it yet, fall back to _isFiring.
-        bool firing = _fireButton != null ? physicallyHeld : _isFiring;
-
-        if (!firing || weaponContainer == null) return;
+        if (!_fireTouchActive) return;      // no finger on the button
 
         WeaponFire active = GetActiveWeapon();
-        if (active == null || !active.IsAutomatic) return;
+        if (active == null) return;
 
-        // Shoot() enforces fire rate and ammo internally — safe to call every frame.
-        active.Shoot();
+        if (active.IsAutomatic)
+        {
+            // Call Shoot() every frame. WeaponFire.Shoot() enforces fireRate
+            // internally via nextFireTime, so this is safe to call every frame.
+            active.Shoot();
+        }
+        else
+        {
+            // Semi-auto: only fire on the very first frame the touch begins.
+            // Holding the button does nothing extra — one press = one shot.
+            if (_fireTouchBegan)
+                active.Shoot();
+        }
     }
 
     WeaponFire GetActiveWeapon()
     {
         if (weaponContainer == null) return null;
-        foreach (WeaponFire w in weaponContainer.GetComponentsInChildren<WeaponFire>(true))
+        foreach (WeaponFire w in
+                 weaponContainer.GetComponentsInChildren<WeaponFire>(true))
+        {
             if (w.gameObject.activeInHierarchy && w.enabled) return w;
+        }
         return null;
     }
 
-    // Called by FireButton.cs on PointerDown.
-    public void OnFireButtonDown()
-    {
-        _isFiring = true;
-        // Fires one shot immediately on press (correct for both semi and auto).
-        GetActiveWeapon()?.Shoot();
-    }
-
-    // Called by FireButton.cs on PointerUp.
-    public void OnFireButtonUp()
-    {
-        _isFiring = false;
-    }
+    // These remain public because the Inspector On Click () entry still
+    // references them. The onClick event is replaced with an empty one at
+    // runtime (in FindFireButton), so these are never actually invoked.
+    // They are kept here so Unity doesn't log a missing-method warning.
+    public void OnFireButtonDown() { }
+    public void OnFireButtonUp() { }
 
     // ─────────────────────────── UI SYNC ─────────────────────────────────────
 
@@ -261,8 +310,11 @@ public class MobileControls : MonoBehaviour
     bool PlayerHasEquippedWeapon()
     {
         if (weaponContainer == null) return false;
-        foreach (WeaponFire w in weaponContainer.GetComponentsInChildren<WeaponFire>(true))
+        foreach (WeaponFire w in
+                 weaponContainer.GetComponentsInChildren<WeaponFire>(true))
+        {
             if (w.gameObject.activeInHierarchy && w.enabled) return true;
+        }
         return false;
     }
 
@@ -296,7 +348,8 @@ public class MobileControls : MonoBehaviour
     public void OnReloadButton()
     {
         if (weaponContainer != null)
-            weaponContainer.BroadcastMessage("Reload", SendMessageOptions.DontRequireReceiver);
+            weaponContainer.BroadcastMessage("Reload",
+                                             SendMessageOptions.DontRequireReceiver);
     }
 
     public void OnStatsButtonDown()
@@ -323,7 +376,8 @@ public class MobileControls : MonoBehaviour
     {
         CloseStore();
         if (waveManager != null)
-            waveManager.SendMessage("StartNextWave", SendMessageOptions.DontRequireReceiver);
+            waveManager.SendMessage("StartNextWave",
+                                    SendMessageOptions.DontRequireReceiver);
     }
 
     public void OnPickupButton()
@@ -335,7 +389,8 @@ public class MobileControls : MonoBehaviour
     public void OnDropButton()
     {
         if (weaponContainer == null) return;
-        foreach (WeaponDrop drop in weaponContainer.GetComponentsInChildren<WeaponDrop>(true))
+        foreach (WeaponDrop drop in
+                 weaponContainer.GetComponentsInChildren<WeaponDrop>(true))
         {
             if (drop != null && drop.gameObject.activeInHierarchy)
             {
