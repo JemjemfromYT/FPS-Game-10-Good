@@ -42,21 +42,20 @@ public class MobileControls : MonoBehaviour
     private PlayerStamina _playerStamina;
 
     // ── fire button ──────────────────────────────────────────────────────────
-    // PRIMARY: direct touch-rect detection (reliable, no stuck-flag issues).
-    // FALLBACK: _isFiring bool set by OnFireButtonDown / cleared by OnFireButtonUp
-    //           (used during the brief startup window before the rect is found,
-    //           or if FindFireButton can't locate the button at all).
-
-    private RectTransform _fireBtnRect;
-    private Canvas _fireBtnCanvas;
-
-    private bool _fireTouchActive; // a finger is currently on the fire button rect
-    private bool _fireTouchBegan;  // the touch started THIS frame (initial press)
-
-    // Fallback flag — set by OnFireButtonDown, cleared by OnFireButtonUp.
-    // Also force-cleared every frame once _fireBtnRect is found so it can
-    // never get permanently stuck after the rect becomes available.
+    // _isFiring    — true while finger is DOWN on the fire button.
+    //                Set by OnFireButtonDown(), cleared by OnFireButtonUp().
+    //                NEVER force-cleared by polling logic — only pointer events.
+    //
+    // _fireJustPressed — true for exactly one HandleAutoFire() frame after the
+    //                    finger first touches the button.  Used for semi-auto
+    //                    weapons so one tap = one bullet.
     private bool _isFiring;
+    private bool _fireJustPressed;
+
+    // ── weapon-change tracking ───────────────────────────────────────────────
+    // When the player picks up a new weapon we reset the fire flags so the
+    // new gun doesn't inherit a "stuck firing" state from the previous one.
+    private WeaponFire _lastActiveWeapon;
 
     // ── look ─────────────────────────────────────────────────────────────────
     private int _lookFingerId = -1;
@@ -85,28 +84,29 @@ public class MobileControls : MonoBehaviour
         if (storeExitButton != null) storeExitButton.SetActive(false);
     }
 
+    // ── find & wire the FireButton UI element ─────────────────────────────────
+    // Tries every frame until successful so it works even if the Canvas starts
+    // inactive. Once found, FireButton.cs handles pointer events — no rect-polling.
+    private bool _fireButtonWired = false;
+
     void FindFireButton()
     {
-        if (_fireBtnRect != null) return; // already found
+        if (_fireButtonWired) return;
 
-        // GameObject.Find only sees active objects. If the canvas is inactive
-        // at Start() time this returns null — Update() retries every frame.
         GameObject obj = GameObject.Find("FireButton");
         if (obj == null) return;
 
-        _fireBtnRect = obj.GetComponent<RectTransform>();
-        _fireBtnCanvas = obj.GetComponentInParent<Canvas>();
-
-        // Kill the Inspector On Click () so it can't call OnFireButtonDown()
-        // on RELEASE and leave _isFiring stuck true.
+        // Clear the Inspector On Click () so it never fires on pointer-up
+        // and leaves _isFiring stuck true.
         var btn = obj.GetComponent<UnityEngine.UI.Button>();
         if (btn != null)
             btn.onClick = new UnityEngine.UI.Button.ButtonClickedEvent();
 
-        // Add FireButton.cs which handles IPointerUpHandler so _isFiring is
-        // always cleared when the finger lifts (important for the fallback path).
+        // FireButton.cs provides IPointerDownHandler + IPointerUpHandler.
         FireButton fb = obj.GetComponent<FireButton>() ?? obj.AddComponent<FireButton>();
         fb.mobileControls = this;
+
+        _fireButtonWired = true;
     }
 
     void OnDestroy()
@@ -118,7 +118,7 @@ public class MobileControls : MonoBehaviour
 
     void Update()
     {
-        if (_fireBtnRect == null) FindFireButton(); // retry until canvas is active
+        if (!_fireButtonWired) FindFireButton(); // retry until canvas is active
 
         if (_storeOpen && storePanel != null && !storePanel.activeSelf)
             CloseStore();
@@ -195,74 +195,42 @@ public class MobileControls : MonoBehaviour
 
     // ─────────────────────────── FIRE ────────────────────────────────────────
 
-    // Polls Input.touches and checks whether any active touch falls inside the
-    // FireButton's screen-space RectTransform. Updates _fireTouchActive and
-    // _fireTouchBegan for this frame.
-    void PollFireTouch()
-    {
-        _fireTouchActive = false;
-        _fireTouchBegan = false;
-
-        if (_fireBtnRect == null) return;
-
-        // ScreenSpaceOverlay canvases need camera = null.
-        // ScreenSpaceCamera / WorldSpace canvases need their assigned camera.
-        // Fall back to Camera.main if worldCamera is not assigned.
-        Camera cam = null;
-        if (_fireBtnCanvas != null &&
-            _fireBtnCanvas.renderMode != RenderMode.ScreenSpaceOverlay)
-        {
-            cam = _fireBtnCanvas.worldCamera != null
-                ? _fireBtnCanvas.worldCamera
-                : Camera.main;
-        }
-
-        foreach (Touch t in Input.touches)
-        {
-            if (t.phase == TouchPhase.Canceled) continue;
-
-            if (RectTransformUtility.RectangleContainsScreenPoint(
-                    _fireBtnRect, t.position, cam))
-            {
-                _fireTouchActive = true;
-                if (t.phase == TouchPhase.Began)
-                    _fireTouchBegan = true;
-                break; // one finger on the button is enough
-            }
-        }
-    }
-
     void HandleAutoFire()
     {
-        PollFireTouch();
-
-        // Once the rect is found we have reliable per-frame touch data, so
-        // forcibly clear _isFiring — it can never get stuck after this point.
-        if (_fireBtnRect != null)
-            _isFiring = false;
-
-        // Combine both detection paths:
-        //   _fireTouchActive — direct touch-rect check (primary, most reliable)
-        //   _isFiring        — fallback flag from OnFireButtonDown / OnFireButtonUp
-        bool holdFiring = _fireTouchActive || _isFiring;
-        bool justPressed = _fireTouchBegan;
-
         WeaponFire active = GetActiveWeapon();
+
+        // ── Weapon-change guard ───────────────────────────────────────────────
+        // If the player just picked up a new weapon, reset fire flags so the
+        // new gun doesn't inherit a stuck-firing state from the old one.
+        if (active != _lastActiveWeapon)
+        {
+            _isFiring = false;
+            _fireJustPressed = false;
+            _lastActiveWeapon = active;
+        }
+
         if (active == null) return;
 
         if (active.IsAutomatic)
         {
-            // Call Shoot() every frame while held.
+            // ── Automatic ────────────────────────────────────────────────────
+            // Fires every frame while the finger is held on the button.
             // WeaponFire.Shoot() enforces fireRate internally — safe to call every frame.
-            if (holdFiring) active.Shoot();
+            if (_isFiring)
+                active.Shoot();
         }
         else
         {
-            // Semi-auto: one shot per press.
-            // justPressed is true only on the FIRST frame of a new touch.
-            // OnFireButtonDown() also calls Shoot() once for the onClick fallback path.
-            if (justPressed) active.Shoot();
+            // ── Semi-auto ────────────────────────────────────────────────────
+            // One shot per tap — _fireJustPressed is only true for a single
+            // HandleAutoFire() call after the finger first touched the button.
+            if (_fireJustPressed)
+                active.Shoot();
         }
+
+        // Always consume _fireJustPressed after one frame so it can never
+        // linger and cause multiple shots from a single tap.
+        _fireJustPressed = false;
     }
 
     WeaponFire GetActiveWeapon()
@@ -276,20 +244,25 @@ public class MobileControls : MonoBehaviour
         return null;
     }
 
-    // Called by the Inspector On Click () entry on the FireButton.
-    // Acts as a FALLBACK for the startup window before _fireBtnRect is found.
-    // Once FindFireButton() succeeds it clears onClick, so this is no longer called.
+    // Called by FireButton.cs IPointerDownHandler — finger touched the button.
     public void OnFireButtonDown()
     {
         _isFiring = true;
-        // Fire one shot immediately on press (covers both semi-auto and auto).
-        GetActiveWeapon()?.Shoot();
+        _fireJustPressed = true;
+        // Note: do NOT call Shoot() here.
+        // HandleAutoFire() reads _isFiring / _fireJustPressed each frame and
+        // decides whether to fire based on the active weapon type.
+        // Calling Shoot() here AND in HandleAutoFire() would double-fire.
     }
 
-    // Called by FireButton.cs IPointerUpHandler — clears the fallback flag.
+    // Called by FireButton.cs IPointerUpHandler — finger lifted off the button.
     public void OnFireButtonUp()
     {
         _isFiring = false;
+        // _fireJustPressed is already false by the time OnFireButtonUp fires
+        // (it's consumed inside HandleAutoFire the same frame it's set), but
+        // clear it here too for safety.
+        _fireJustPressed = false;
     }
 
     // ─────────────────────────── UI SYNC ─────────────────────────────────────
