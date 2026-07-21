@@ -14851,7 +14851,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2669589072566375179, guid: fa9e1be43ac9c104287c65b36071d392, type: 3}
       propertyPath: fireRate
-      value: 0.5
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2669589072566375179, guid: fa9e1be43ac9c104287c65b36071d392, type: 3}
       propertyPath: crosshair
