@@ -982,7 +982,7 @@ PrefabInstance:
       objectReference: {fileID: 1684246794}
     - target: {fileID: 913683155074082623, guid: 2378e2f201ebe1044b5093bdcf3b64df, type: 3}
       propertyPath: isAutomatic
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 913683155074082623, guid: 2378e2f201ebe1044b5093bdcf3b64df, type: 3}
       propertyPath: crosshairDot
