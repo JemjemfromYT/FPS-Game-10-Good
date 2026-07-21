@@ -46,10 +46,9 @@ public class WeaponFire : MonoBehaviour
     AudioClip cachedFireClip;
     CrosshairSpreadDisplay _cachedSpreadDisplay;
 
-    // FIX 2 (screen-tap fires weapon): MobileControls.Start() sets this true.
-    // When true, WeaponFire skips all Input.GetButton polling — on mobile any
-    // screen touch maps to mouse button 0 and was triggering shots unintentionally.
-    // The mobile Fire UI button calls Shoot() directly instead.
+    // MobileControls.Start() sets this true so WeaponFire skips all
+    // Input.GetButton polling — on mobile any screen touch maps to mouse
+    // button 0 and would fire the weapon unintentionally.
     public static bool MobileMode = false;
 
     public AmmoType AmmoType => ammoType;
@@ -59,8 +58,6 @@ public class WeaponFire : MonoBehaviour
     public bool IsWeaponBusy => isReloading || Time.time < nextFireTime;
     public float WeaponSpread => weaponSpread;
     public float SpreadDegrees => WeaponSpreadUtility.OffsetToDegrees(weaponSpread);
-
-    // Lets MobileControls know whether to hold-fire or single-fire.
     public bool IsAutomatic => isAutomatic;
 
     void Start()
@@ -90,11 +87,18 @@ public class WeaponFire : MonoBehaviour
         if (crosshair != null) crosshair.SetActive(false);
     }
 
+    /// <summary>
+    /// Called by WeaponContainerSetup to initialise ammo for this weapon.
+    /// FIX (wrong ammo): uses maxClipSize (the Inspector field) as the starting
+    /// clip so the value the user sets in the Inspector is always respected.
+    /// The config's startReserve is still used for the reserve pool.
+    /// </summary>
     public void ApplyConfig(WeaponDefinitions.WeaponConfig config)
     {
         if (GlobalAmmo.GetClip(ammoType) == 0 && GlobalAmmo.GetReserve(ammoType) == 0)
         {
-            SetClip(config.startClip);
+            // maxClipSize is the Inspector value — use it, not config.startClip.
+            SetClip(maxClipSize);
             SetReserve(config.startReserve);
         }
     }
@@ -132,8 +136,8 @@ public class WeaponFire : MonoBehaviour
         UpdateCrosshairSpread();
         if (isReloading) return;
 
-        // FIX 2: Skip all mouse/keyboard input when in mobile mode.
-        // The mobile Fire button calls Shoot() directly via its UI OnClick event.
+        // Skip all mouse / keyboard input on mobile — the Fire button calls
+        // Shoot() directly via FireButton.cs (IPointerDownHandler).
         if (!MobileMode)
         {
             bool isFiring = isAutomatic
@@ -172,10 +176,24 @@ public class WeaponFire : MonoBehaviour
         _cachedSpreadDisplay.ApplySpread(SpreadDegrees, camera);
     }
 
-    // Public so the mobile Fire button's OnClick event can call it directly.
+    /// <summary>
+    /// Public so the mobile FireButton.cs can call it directly on PointerDown.
+    /// FIX (fires with no ammo): guards against empty clip and plays the empty-
+    /// gun click (throttled so it does not spam every frame on hold).
+    /// </summary>
     public void Shoot()
     {
         if (isReloading || Time.time < nextFireTime) return;
+
+        // FIX: check ammo BEFORE consuming it or playing effects.
+        if (GetCurrentClip() <= 0)
+        {
+            // Throttle the empty-gun click using the fire rate so it doesn't
+            // spam the sound every frame when the player holds the button.
+            nextFireTime = Time.time + Mathf.Max(fireRate, 0.3f);
+            if (emptyGunSound != null) emptyGunSound.Play();
+            return;
+        }
 
         nextFireTime = Time.time + fireRate;
         ModifyClip(-1);
@@ -190,8 +208,8 @@ public class WeaponFire : MonoBehaviour
         int hitCount = isShotgun ? ShotgunPelletCount : 1;
         float damagePerHit = isShotgun ? weaponDamage / ShotgunPelletCount : weaponDamage;
 
-        // FIX 3 (tracer lag): pass the barrel Transform so BulletTracer
-        // can update the start point every frame while the player moves.
+        // Pass the barrel Transform so BulletTracer tracks it each frame
+        // (prevents the tracer lagging behind at high movement speed).
         Transform originTransform = bulletTracerOrigin;
         Vector3 tracerStart = originTransform != null
             ? originTransform.position
@@ -277,9 +295,7 @@ public class WeaponFire : MonoBehaviour
     }
 
     Vector3 GetSpreadDirection(Transform cameraTransform)
-    {
-        return WeaponSpreadUtility.GetSpreadDirection(cameraTransform, SpreadDegrees);
-    }
+        => WeaponSpreadUtility.GetSpreadDirection(cameraTransform, SpreadDegrees);
 
     IEnumerator Reload()
     {
@@ -317,10 +333,12 @@ public class WeaponFire : MonoBehaviour
 
     public int GetCurrentClip() => GlobalAmmo.GetClip(ammoType);
     public int GetCurrentReserve() => GlobalAmmo.GetReserve(ammoType);
+    public void ModifyClip(int amt) => SetClip(GetCurrentClip() + amt);
+    public void ModifyReserve(int a) => SetReserve(GetCurrentReserve() + a);
 
-    public void ModifyClip(int amount) => SetClip(GetCurrentClip() + amount);
-    public void ModifyReserve(int amount) => SetReserve(GetCurrentReserve() + amount);
+    public void SetClip(int value)
+        => GlobalAmmo.SetClip(ammoType, Mathf.Clamp(value, 0, maxClipSize));
 
-    public void SetClip(int value) => GlobalAmmo.SetClip(ammoType, Mathf.Clamp(value, 0, maxClipSize));
-    public void SetReserve(int value) => GlobalAmmo.SetReserve(ammoType, Mathf.Max(0, value));
+    public void SetReserve(int value)
+        => GlobalAmmo.SetReserve(ammoType, Mathf.Max(0, value));
 }

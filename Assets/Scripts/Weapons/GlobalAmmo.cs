@@ -3,6 +3,10 @@ using TMPro;
 
 public class GlobalAmmo : MonoBehaviour
 {
+    // FIX (wrong ammo on pickup): Statics survive between Editor Play sessions.
+    // All defaults are now 0. ResetAmmoOnPlay() fires before any Awake() so
+    // ApplyConfig's "if (clip==0 && reserve==0)" guard is always true at game start,
+    // letting WeaponFire apply the correct Inspector / WeaponDefinitions values.
     public static int pistolClip = 0;
     public static int pistolReserve = 0;
 
@@ -18,23 +22,19 @@ public class GlobalAmmo : MonoBehaviour
     public static int sniperClip = 0;
     public static int sniperReserve = 0;
 
-    [SerializeField] private TMP_Text ammoDisplayText;
-
-    // Resets all ammo statics to 0 every Play session so
-    // ApplyConfig() always runs and Inspector values are respected.
-    void Awake()
+    // Runs before ANY Awake() when entering Play mode — guaranteed to clear
+    // stale static values left over from the previous session.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    static void ResetAmmoOnPlay()
     {
-        pistolClip = 0;
-        pistolReserve = 0;
-        rifleClip = 0;
-        rifleReserve = 0;
-        smgClip = 0;
-        smgReserve = 0;
-        shotgunClip = 0;
-        shotgunReserve = 0;
-        sniperClip = 0;
-        sniperReserve = 0;
+        pistolClip = 0; pistolReserve = 0;
+        rifleClip = 0; rifleReserve = 0;
+        smgClip = 0; smgReserve = 0;
+        shotgunClip = 0; shotgunReserve = 0;
+        sniperClip = 0; sniperReserve = 0;
     }
+
+    [SerializeField] private TMP_Text ammoDisplayText;
 
     void Update()
     {

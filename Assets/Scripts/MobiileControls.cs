@@ -35,10 +35,9 @@ public class MobileControls : MonoBehaviour
 
     [Header("Feel")]
     public float moveSpeed = 4f;
-    public float sprintSpeed = 8.5f;   // FIX 1: used when PlayerStamina.IsSprinting
+    public float sprintSpeed = 8.5f;
 
-    // Look sensitivity — lowered default; tweak in Inspector.
-    // The old code divided by dt (~0.016 s) which made it ~60× too fast.
+    // Look sensitivity — no /dt division; tune in the Inspector.
     public float lookSensitivity = 0.3f;
 
     // ── cached refs ──
@@ -47,35 +46,46 @@ public class MobileControls : MonoBehaviour
     private int _lookFingerId = -1;
     private Vector2 _lastLookPos;
     private bool _storeOpen = false;
-    private bool _isFiring = false;   // true while fire button is held
+    private bool _isFiring = false;   // true while fire button is physically held
 
     void Start()
     {
-        // Lock the device to landscape so the player can't accidentally rotate
-        // into portrait. LandscapeLeft = home button on the right (most common).
-        // Change to LandscapeRight if your players prefer the opposite grip.
+        // Lock to landscape immediately
         Screen.orientation = ScreenOrientation.LandscapeLeft;
 
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
-        // Cache the stamina component for sprint speed queries
+        // Cache stamina for sprint speed
         if (playerController != null)
             _playerStamina = playerController.GetComponent<PlayerStamina>();
 
-        // FIX 2 (screen-tap fires): tell WeaponFire to ignore mouse/button input.
-        // Our Fire button calls WeaponFire.Shoot() directly, so the automatic
-        // Input.GetButton("Fire1") polling (which fires on any touch) must be off.
+        // Disable WeaponFire's mouse/keyboard polling — mobile fire button
+        // calls Shoot() directly via FireButton.cs (IPointerDownHandler).
         WeaponFire.MobileMode = true;
+
+        // Auto-inject FireButton onto the Fire button so OnPointerDown /
+        // OnPointerUp events work correctly. This means no Inspector setup
+        // is needed as long as your button is named "FireButton".
+        InjectFireButton();
 
         if (pickupButton != null) pickupButton.SetActive(false);
         if (dropButton != null) dropButton.SetActive(false);
         if (storeExitButton != null) storeExitButton.SetActive(false);
     }
 
+    void InjectFireButton()
+    {
+        GameObject fireBtn = GameObject.Find("FireButton");
+        if (fireBtn == null) return;
+
+        FireButton fb = fireBtn.GetComponent<FireButton>();
+        if (fb == null) fb = fireBtn.AddComponent<FireButton>();
+        fb.mobileControls = this;
+    }
+
     void OnDestroy()
     {
-        // Reset global flags so Editor play-mode cycling doesn't leave stale state.
         WeaponFire.MobileMode = false;
         PlayerStamina.MobileJoystickInput = Vector2.zero;
         PlayerStamina.MobileSprinting = false;
@@ -102,18 +112,14 @@ public class MobileControls : MonoBehaviour
 
         Vector2 joyInput = new Vector2(joystick.Horizontal, joystick.Vertical);
 
-        // FIX 1a (sprint): tell PlayerStamina the joystick is active so its
-        // isMoving check doesn't stay false (keyboard axes are 0 on mobile).
+        // Tell PlayerStamina the joystick is active (keyboard axes are 0 on mobile).
         PlayerStamina.MobileJoystickInput = joyInput;
 
-        // FIX (direction): use the player's own transform, not MobileManager's,
-        // so the joystick direction matches wherever the player is looking.
+        // Use the player's own transform so direction follows their look angle.
         Transform t = playerController.transform;
         Vector3 move = t.right * joyInput.x + t.forward * joyInput.y;
         move.y = -9.8f;
 
-        // FIX 1b (sprint): pick speed based on PlayerStamina.IsSprinting.
-        // If the stamina component isn't found, fall back to moveSpeed.
         float speed = (_playerStamina != null && _playerStamina.IsSprinting)
             ? sprintSpeed
             : moveSpeed;
@@ -127,7 +133,6 @@ public class MobileControls : MonoBehaviour
     {
         foreach (Touch touch in Input.touches)
         {
-            // Only the RIGHT half of the screen controls looking
             if (touch.position.x < Screen.width * 0.5f) continue;
 
             if (touch.phase == TouchPhase.Began && _lookFingerId == -1)
@@ -142,20 +147,16 @@ public class MobileControls : MonoBehaviour
 
                 if (starterInputs != null)
                 {
-                    // Negate delta.y to fix inverted vertical look.
-                    // No /dt — the old division caused ~60× amplification.
                     starterInputs.LookInput(new Vector2(delta.x, -delta.y) * lookSensitivity);
                 }
                 else
                 {
-                    // Fallback (no StarterAssets): rotate player L/R, tilt camera U/D.
                     playerController.transform.Rotate(Vector3.up * delta.x * lookSensitivity);
 
                     if (playerCamera != null)
                     {
                         Vector3 e = playerCamera.localEulerAngles;
                         float p = e.x > 180f ? e.x - 360f : e.x;
-                        // Drag up → delta.y > 0 → reduce pitch → look up. Correct.
                         p = Mathf.Clamp(p - delta.y * lookSensitivity, -80f, 80f);
                         playerCamera.localEulerAngles = new Vector3(p, 0f, 0f);
                     }
@@ -168,6 +169,44 @@ public class MobileControls : MonoBehaviour
                 if (starterInputs != null) starterInputs.LookInput(Vector2.zero);
             }
         }
+    }
+
+    // ─────────────────────────── FIRE LOGIC ──────────────────────────────────
+
+    // Runs every frame while fire button is held.
+    // Automatic weapons (Mac10, M9-when-set-to-auto): keep shooting.
+    // Semi-auto (AK47, AWP, Shotgun): only the initial press fires; this exits early.
+    void HandleAutoFire()
+    {
+        if (!_isFiring || weaponContainer == null) return;
+
+        WeaponFire active = GetActiveWeapon();
+        if (active == null || !active.IsAutomatic) return;
+
+        // Shoot() guards against empty ammo and enforces fire rate internally.
+        active.Shoot();
+    }
+
+    WeaponFire GetActiveWeapon()
+    {
+        if (weaponContainer == null) return null;
+        foreach (WeaponFire w in weaponContainer.GetComponentsInChildren<WeaponFire>(true))
+            if (w.gameObject.activeInHierarchy && w.enabled) return w;
+        return null;
+    }
+
+    // Called by FireButton.cs on PointerDown.
+    public void OnFireButtonDown()
+    {
+        _isFiring = true;
+        // Fire once immediately on press regardless of mode (semi or auto).
+        GetActiveWeapon()?.Shoot();
+    }
+
+    // Called by FireButton.cs on PointerUp and PointerExit.
+    public void OnFireButtonUp()
+    {
+        _isFiring = false;
     }
 
     // ─────────────────────────── UI SYNC ─────────────────────────────────────
@@ -229,49 +268,6 @@ public class MobileControls : MonoBehaviour
     }
 
     // ─────────────────────────── BUTTON EVENTS ───────────────────────────────
-
-    // ── called every frame while fire button is held (automatic weapons only) ──
-    void HandleAutoFire()
-    {
-        if (!_isFiring || weaponContainer == null) return;
-
-        WeaponFire active = GetActiveWeapon();
-        if (active == null || !active.IsAutomatic) return;
-
-        // Fire rate is enforced inside Shoot() via nextFireTime, so calling
-        // it every frame is safe — it simply no-ops until the cooldown expires.
-        active.Shoot();
-    }
-
-    WeaponFire GetActiveWeapon()
-    {
-        if (weaponContainer == null) return null;
-        foreach (WeaponFire w in weaponContainer.GetComponentsInChildren<WeaponFire>(true))
-            if (w.gameObject.activeInHierarchy && w.enabled) return w;
-        return null;
-    }
-
-    // Fire button pressed:
-    //   • Semi-auto (AK47, AWP, Shotgun) → fire once immediately, ignore further holds.
-    //   • Automatic (M9, Mac10)           → fire once immediately, then keep firing
-    //                                       each frame in HandleAutoFire() until released.
-    public void OnFireButtonDown()
-    {
-        _isFiring = true;
-
-        WeaponFire active = GetActiveWeapon();
-        if (active == null) return;
-
-        // Fire once on the initial press regardless of mode.
-        // For semi-auto this is the only shot; for auto HandleAutoFire continues.
-        active.Shoot();
-    }
-
-    // Fire button released — stop automatic fire.
-    public void OnFireButtonUp()
-    {
-        _isFiring = false;
-    }
 
     public void OnReloadButton()
     {
