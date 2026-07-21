@@ -258,15 +258,17 @@ public class MobileControls : MonoBehaviour
             _lastActiveWeapon = active;
         }
 
-        // Once the rect is found we have reliable per-frame touch data.
-        // Clear _isFiring so the fallback path never conflicts with the
-        // primary touch-rect path.
-        if (_fireBtnRect != null)
-            _isFiring = false;
-
         // Combine both detection paths:
-        //   Primary  — _fireTouchActive / _fireTouchBegan (touch-rect check)
-        //   Fallback — _isFiring / _fireJustPressed (pointer events when rect unavailable)
+        //   Primary  — _fireTouchActive / _fireTouchBegan (touch-rect, works on device)
+        //   Fallback — _isFiring / _fireJustPressed (IPointerDown/Up, works in Editor
+        //              and as a safety net when touch-rect detection returns nothing)
+        //
+        // FIX: _isFiring is NO LONGER force-cleared when _fireBtnRect is found.
+        // The old "if (_fireBtnRect != null) _isFiring = false;" wiped out _isFiring
+        // every single frame, so IPointerDown's signal was destroyed before
+        // HandleAutoFire could read it — nothing ever fired.
+        // _isFiring is now only cleared by OnFireButtonUp() (finger lift) or the
+        // weapon-change guard above, making it reliable on both device and Editor.
         bool holdFiring = _fireTouchActive || _isFiring;
         bool justPressed = _fireTouchBegan || _fireJustPressed;
 
@@ -300,19 +302,13 @@ public class MobileControls : MonoBehaviour
     }
 
     // Called by FireButton.cs IPointerDownHandler — finger just touched the button.
-    // FIX: now fires on actual PRESS (pointer-down) instead of on RELEASE (onClick),
-    // which was the root cause of the original stuck-firing bug.
+    // Sets _isFiring (held) and _fireJustPressed (one-frame pulse).
+    // HandleAutoFire() reads these flags each frame to decide whether to fire.
+    // Do NOT call Shoot() here — HandleAutoFire() owns that responsibility.
     public void OnFireButtonDown()
     {
         _isFiring = true;
         _fireJustPressed = true;
-
-        // FIX: only fire the direct shot when PollFireTouch can't help (rect not
-        // found yet). Once the rect is found, HandleAutoFire() handles firing via
-        // _fireTouchActive / _fireTouchBegan. Calling Shoot() here AND letting
-        // HandleAutoFire() fire from _fireTouchBegan would double-fire.
-        if (_fireBtnRect == null)
-            GetActiveWeapon()?.Shoot();
     }
 
     // Called by FireButton.cs IPointerUpHandler — finger lifted off the button.
@@ -387,9 +383,12 @@ public class MobileControls : MonoBehaviour
 
     public void OnReloadButton()
     {
-        if (weaponContainer != null)
-            weaponContainer.BroadcastMessage("Reload",
-                                             SendMessageOptions.DontRequireReceiver);
+        // FIX: call TriggerReload() instead of BroadcastMessage("Reload").
+        // BroadcastMessage bypasses the isReloading guard, so spamming the
+        // button could start multiple reload coroutines and stack animations.
+        // TriggerReload() ignores the call if already reloading, clip is full,
+        // or there is no reserve ammo.
+        GetActiveWeapon()?.TriggerReload();
     }
 
     public void OnStatsButtonDown()

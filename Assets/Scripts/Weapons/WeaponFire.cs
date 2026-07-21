@@ -297,6 +297,19 @@ public class WeaponFire : MonoBehaviour
     Vector3 GetSpreadDirection(Transform cameraTransform)
         => WeaponSpreadUtility.GetSpreadDirection(cameraTransform, SpreadDegrees);
 
+    /// <summary>
+    /// Called by the mobile Reload button. Ignores the request if a reload
+    /// is already in progress, the clip is already full, or there is no
+    /// reserve ammo — prevents animation spam from repeated taps.
+    /// </summary>
+    public void TriggerReload()
+    {
+        if (isReloading) return;
+        if (GetCurrentClip() >= maxClipSize) return;
+        if (GetCurrentReserve() <= 0) return;
+        StartCoroutine(Reload());
+    }
+
     IEnumerator Reload()
     {
         isReloading = true;
