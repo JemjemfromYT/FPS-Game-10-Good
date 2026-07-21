@@ -33,7 +33,10 @@ public static class BulletTracerPool
         return fallbackPrefab;
     }
 
-    public static void Spawn(Vector3 start, Vector3 end, BulletTracer prefab, float lifetime)
+    // FIX 3 (tracer lag): accepts the barrel Transform so BulletTracer can
+    // track it each frame instead of using a frozen world position.
+    public static void Spawn(Vector3 start, Transform origin, Vector3 end,
+                             BulletTracer prefab, float lifetime)
     {
         EnsureRoot();
 
@@ -42,7 +45,7 @@ public static class BulletTracerPool
             : Object.Instantiate(GetPrefab(prefab), root);
 
         tracer.gameObject.SetActive(true);
-        tracer.Initialize(start, end, lifetime, Release);
+        tracer.Initialize(start, origin, end, lifetime, Release);
     }
 
     static void Release(BulletTracer tracer)

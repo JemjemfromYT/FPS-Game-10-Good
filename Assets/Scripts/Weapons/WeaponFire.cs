@@ -26,7 +26,6 @@ public class WeaponFire : MonoBehaviour
     [SerializeField] AudioSource gunFireSound;
     [SerializeField] GameObject weaponMeshModel;
 
-    // Safely renames the field while keeping your current setups!
     [FormerlySerializedAs("crosshairDot")]
     [SerializeField] GameObject crosshair;
 
@@ -40,23 +39,29 @@ public class WeaponFire : MonoBehaviour
     [SerializeField] float bulletTracerMaxDistance = 120f;
     [SerializeField] Transform bulletTracerOrigin;
 
-    // --- STRICT TIMESTAMPS INSTEAD OF COROUTINES ---
     private float nextFireTime = 0f;
     private bool isReloading = false;
 
     Animator gunAnimator;
     AudioClip cachedFireClip;
-    CrosshairSpreadDisplay _cachedSpreadDisplay; // Caches the UI for performance
+    CrosshairSpreadDisplay _cachedSpreadDisplay;
+
+    // FIX 2 (screen-tap fires weapon): MobileControls.Start() sets this true.
+    // When true, WeaponFire skips all Input.GetButton polling — on mobile any
+    // screen touch maps to mouse button 0 and was triggering shots unintentionally.
+    // The mobile Fire UI button calls Shoot() directly instead.
+    public static bool MobileMode = false;
 
     public AmmoType AmmoType => ammoType;
     public int MaxClipSize => maxClipSize;
     public bool IsReloading => isReloading;
-
     public bool CanShoot => Time.time >= nextFireTime && !isReloading;
     public bool IsWeaponBusy => isReloading || Time.time < nextFireTime;
-
     public float WeaponSpread => weaponSpread;
     public float SpreadDegrees => WeaponSpreadUtility.OffsetToDegrees(weaponSpread);
+
+    // Lets MobileControls know whether to hold-fire or single-fire.
+    public bool IsAutomatic => isAutomatic;
 
     void Start()
     {
@@ -67,19 +72,15 @@ public class WeaponFire : MonoBehaviour
     void CacheFireSound()
     {
         if (gunFireSound == null) return;
-
         cachedFireClip = gunFireSound.clip;
         if (cachedFireClip == null && gunFireSound.resource != null)
-        {
             cachedFireClip = gunFireSound.resource as AudioClip;
-        }
     }
 
     void OnEnable()
     {
         CacheFireSound();
         ResetAnimatorPose();
-
         if (crosshair != null) crosshair.SetActive(true);
     }
 
@@ -100,10 +101,7 @@ public class WeaponFire : MonoBehaviour
 
     public void SetDamageIndicatorPrefab(GameObject prefab)
     {
-        if (prefab != null)
-        {
-            damageIndicatorPrefab = prefab;
-        }
+        if (prefab != null) damageIndicatorPrefab = prefab;
     }
 
     void CacheAnimator()
@@ -131,24 +129,29 @@ public class WeaponFire : MonoBehaviour
 
     void Update()
     {
-        // Real-time UI refresh! If you change the spread in the Inspector, the Crosshair updates instantly.
         UpdateCrosshairSpread();
-
         if (isReloading) return;
 
-        bool isFiring = isAutomatic ? Input.GetButton("Fire1") : Input.GetButtonDown("Fire1");
-
-        if (isFiring && CanShoot)
+        // FIX 2: Skip all mouse/keyboard input when in mobile mode.
+        // The mobile Fire button calls Shoot() directly via its UI OnClick event.
+        if (!MobileMode)
         {
-            if (GetCurrentClip() > 0) Shoot();
-            else if (Input.GetButtonDown("Fire1") && emptyGunSound != null) emptyGunSound.Play();
-        }
+            bool isFiring = isAutomatic
+                ? Input.GetButton("Fire1")
+                : Input.GetButtonDown("Fire1");
 
-        if (Input.GetKeyDown(KeyCode.R) && CanShoot)
-        {
-            if (GetCurrentClip() < maxClipSize && GetCurrentReserve() > 0)
+            if (isFiring && CanShoot)
             {
-                StartCoroutine(Reload());
+                if (GetCurrentClip() > 0)
+                    Shoot();
+                else if (Input.GetButtonDown("Fire1") && emptyGunSound != null)
+                    emptyGunSound.Play();
+            }
+
+            if (Input.GetKeyDown(KeyCode.R) && CanShoot)
+            {
+                if (GetCurrentClip() < maxClipSize && GetCurrentReserve() > 0)
+                    StartCoroutine(Reload());
             }
         }
     }
@@ -156,7 +159,6 @@ public class WeaponFire : MonoBehaviour
     void UpdateCrosshairSpread()
     {
         if (crosshair == null) return;
-
         Camera camera = Camera.main;
         if (camera == null) return;
 
@@ -164,20 +166,18 @@ public class WeaponFire : MonoBehaviour
         {
             _cachedSpreadDisplay = crosshair.GetComponent<CrosshairSpreadDisplay>();
             if (_cachedSpreadDisplay == null)
-            {
                 _cachedSpreadDisplay = crosshair.AddComponent<CrosshairSpreadDisplay>();
-            }
         }
 
         _cachedSpreadDisplay.ApplySpread(SpreadDegrees, camera);
     }
 
-    void Shoot()
+    // Public so the mobile Fire button's OnClick event can call it directly.
+    public void Shoot()
     {
         if (isReloading || Time.time < nextFireTime) return;
 
         nextFireTime = Time.time + fireRate;
-
         ModifyClip(-1);
         PlayFireSound();
         PlayAnimation(fireAnimationName);
@@ -190,28 +190,30 @@ public class WeaponFire : MonoBehaviour
         int hitCount = isShotgun ? ShotgunPelletCount : 1;
         float damagePerHit = isShotgun ? weaponDamage / ShotgunPelletCount : weaponDamage;
 
-        Vector3 tracerStart = bulletTracerOrigin != null ? bulletTracerOrigin.position : cameraTransform.position;
+        // FIX 3 (tracer lag): pass the barrel Transform so BulletTracer
+        // can update the start point every frame while the player moves.
+        Transform originTransform = bulletTracerOrigin;
+        Vector3 tracerStart = originTransform != null
+            ? originTransform.position
+            : cameraTransform.position;
 
         for (int i = 0; i < hitCount; i++)
         {
             Vector3 direction = GetSpreadDirection(cameraTransform);
-
-            bool hasHit = Physics.Raycast(cameraTransform.position, direction, out RaycastHit hit, Mathf.Infinity);
+            bool hasHit = Physics.Raycast(cameraTransform.position, direction,
+                                          out RaycastHit hit, Mathf.Infinity);
             Vector3 tracerEnd = hasHit
                 ? hit.point
-                : (cameraTransform.position + direction * bulletTracerMaxDistance);
+                : cameraTransform.position + direction * bulletTracerMaxDistance;
 
             if (showBulletTracer)
-            {
-                BulletTracerPool.Spawn(tracerStart, tracerEnd, bulletTracerPrefab, bulletTracerLifetime);
-            }
+                BulletTracerPool.Spawn(tracerStart, originTransform, tracerEnd,
+                                       bulletTracerPrefab, bulletTracerLifetime);
 
             if (!hasHit) continue;
 
             if (HandleEnemyDamage(hit, damagePerHit))
-            {
                 ApplyDamageIndicator(hit.point, damagePerHit);
-            }
         }
     }
 
@@ -231,13 +233,11 @@ public class WeaponFire : MonoBehaviour
             enemyHealth.TakeDamage(damage);
             return true;
         }
-
-        if (TryGetEnemyAi(hit, out EnemyAi enemyAiFromHit))
+        if (TryGetEnemyAi(hit, out EnemyAi enemyAi))
         {
-            enemyAiFromHit.TakeDamage(damage);
+            enemyAi.TakeDamage(damage);
             return true;
         }
-
         return false;
     }
 
@@ -265,15 +265,8 @@ public class WeaponFire : MonoBehaviour
     void PlayFireSound()
     {
         if (gunFireSound == null) return;
-
         if (cachedFireClip == null) CacheFireSound();
-
-        if (cachedFireClip != null)
-        {
-            gunFireSound.PlayOneShot(cachedFireClip);
-            return;
-        }
-
+        if (cachedFireClip != null) { gunFireSound.PlayOneShot(cachedFireClip); return; }
         gunFireSound.Play();
     }
 
@@ -291,7 +284,6 @@ public class WeaponFire : MonoBehaviour
     IEnumerator Reload()
     {
         isReloading = true;
-
         PlayAnimation(reloadAnimationName);
         yield return new WaitForSeconds(reloadDuration);
 
@@ -314,10 +306,8 @@ public class WeaponFire : MonoBehaviour
         nextFireTime = Time.time;
     }
 
-    public string GetAmmoDisplayString()
-    {
-        return GetCurrentClip() + " / " + GetCurrentReserve();
-    }
+    public string GetAmmoDisplayString() =>
+        GetCurrentClip() + " / " + GetCurrentReserve();
 
     public void WriteAmmoToText(TMP_Text text)
     {
@@ -331,13 +321,6 @@ public class WeaponFire : MonoBehaviour
     public void ModifyClip(int amount) => SetClip(GetCurrentClip() + amount);
     public void ModifyReserve(int amount) => SetReserve(GetCurrentReserve() + amount);
 
-    public void SetClip(int value)
-    {
-        GlobalAmmo.SetClip(ammoType, Mathf.Clamp(value, 0, maxClipSize));
-    }
-
-    public void SetReserve(int value)
-    {
-        GlobalAmmo.SetReserve(ammoType, Mathf.Max(0, value));
-    }
+    public void SetClip(int value) => GlobalAmmo.SetClip(ammoType, Mathf.Clamp(value, 0, maxClipSize));
+    public void SetReserve(int value) => GlobalAmmo.SetReserve(ammoType, Mathf.Max(0, value));
 }

@@ -30,8 +30,16 @@ public class PlayerStamina : MonoBehaviour
     // false by MobileControls.OnSprintButtonUp.
     public static bool MobileSprinting = false;
 
-    // Footsteps script reads this to know if actually sprinting
+    // FIX 1 (sprint): MobileControls sets this each frame so we know
+    // the joystick is active even though keyboard axes are zero on mobile.
+    public static Vector2 MobileJoystickInput = Vector2.zero;
+
+    // Footsteps / MobileControls reads this to know the current sprint state.
     public bool IsSprinting { get; private set; }
+
+    // MobileControls reads this to apply the correct speed to joystick movement.
+    public float SprintSpeed => baseSprintSpeed;
+    public float WalkSpeed => baseWalkSpeed;
 
     void Start()
     {
@@ -55,7 +63,11 @@ public class PlayerStamina : MonoBehaviour
         // 2. READ INPUTS — Shift key (keyboard) OR mobile Sprint button
         float moveX = Input.GetAxis("Horizontal");
         float moveZ = Input.GetAxis("Vertical");
-        bool isMoving = (moveX != 0 || moveZ != 0);
+
+        // FIX 1 (sprint): include joystick magnitude so mobile sprint works.
+        // On mobile the keyboard axes are always 0, but MobileJoystickInput
+        // is updated every frame by MobileControls.HandleMovement().
+        bool isMoving = (moveX != 0 || moveZ != 0 || MobileJoystickInput.magnitude > 0.1f);
 
         bool isTryingToSprint = (Input.GetKey(KeyCode.LeftShift) || MobileSprinting)
                                 && isMoving && canSprint && currentStamina > 0;
@@ -83,7 +95,7 @@ public class PlayerStamina : MonoBehaviour
 
         if (staminaSlider != null) staminaSlider.value = currentStamina;
 
-        // 4. APPLY SHOP UPGRADES & MOVE PLAYER
+        // 4. KEYBOARD MOVEMENT (mobile movement is handled by MobileControls)
         float activeSpeed = isTryingToSprint ? baseSprintSpeed : baseWalkSpeed;
         float upgradedSpeed = activeSpeed * GlobalStats.permanentSpeedUpgrade;
 

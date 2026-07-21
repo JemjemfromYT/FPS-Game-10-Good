@@ -79,9 +79,8 @@ public class StoreManager : MonoBehaviour
     {
         if (GlobalStats.money >= cost)
         {
-            // Replaced the old StarterAssets logic with your custom GlobalStats system
             GlobalStats.money -= cost;
-            GlobalStats.permanentSpeedUpgrade += 0.2f; // Adds a 20% speed boost per purchase
+            GlobalStats.permanentSpeedUpgrade += 0.2f;
             CloseStore();
         }
     }
@@ -90,7 +89,7 @@ public class StoreManager : MonoBehaviour
     {
         if (GlobalStats.money >= cost)
         {
-            PlayerHealth health = FindObjectOfType<PlayerHealth>();
+            PlayerHealth health = Object.FindAnyObjectByType<PlayerHealth>();
             if (health != null && health.currentHealth < health.maxHealth)
             {
                 GlobalStats.money -= cost;
@@ -186,7 +185,9 @@ public class StoreManager : MonoBehaviour
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player == null || targetPrefab == null) return;
 
-        Vector3 spawnPosition = player.transform.position + (player.transform.forward * 1.5f) + (Vector3.up * 0.4f);
+        Vector3 spawnPosition = player.transform.position
+                              + (player.transform.forward * 1.5f)
+                              + (Vector3.up * 0.4f);
         GameObject deliveredWeapon = Instantiate(targetPrefab, spawnPosition, player.transform.rotation);
 
         WeaponPickup pickup = deliveredWeapon.GetComponent<WeaponPickup>();

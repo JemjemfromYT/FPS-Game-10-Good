@@ -3,22 +3,38 @@ using TMPro;
 
 public class GlobalAmmo : MonoBehaviour
 {
-    public static int pistolClip = 7;
-    public static int pistolReserve = 30;
+    public static int pistolClip = 0;
+    public static int pistolReserve = 0;
 
-    public static int rifleClip = 30;
-    public static int rifleReserve = 90;
+    public static int rifleClip = 0;
+    public static int rifleReserve = 0;
 
-    public static int smgClip = 32;
-    public static int smgReserve = 96;
+    public static int smgClip = 0;
+    public static int smgReserve = 0;
 
-    public static int shotgunClip = 8;
-    public static int shotgunReserve = 32;
+    public static int shotgunClip = 0;
+    public static int shotgunReserve = 0;
 
-    public static int sniperClip = 5;
-    public static int sniperReserve = 20;
+    public static int sniperClip = 0;
+    public static int sniperReserve = 0;
 
     [SerializeField] private TMP_Text ammoDisplayText;
+
+    // Resets all ammo statics to 0 every Play session so
+    // ApplyConfig() always runs and Inspector values are respected.
+    void Awake()
+    {
+        pistolClip = 0;
+        pistolReserve = 0;
+        rifleClip = 0;
+        rifleReserve = 0;
+        smgClip = 0;
+        smgReserve = 0;
+        shotgunClip = 0;
+        shotgunReserve = 0;
+        sniperClip = 0;
+        sniperReserve = 0;
+    }
 
     void Update()
     {
@@ -116,9 +132,7 @@ public static class WeaponFireUtility
         foreach (WeaponFire weapon in weapons)
         {
             if (weapon.gameObject.activeInHierarchy && weapon.enabled)
-            {
                 return weapon;
-            }
         }
 
         return null;

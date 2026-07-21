@@ -22,8 +22,8 @@ public class PlayerStatsDisplay : MonoBehaviour
 
     void FindPlayerScripts()
     {
-        playerHealthScript = Object.FindFirstObjectByType<PlayerHealth>();
-        playerStaminaScript = Object.FindFirstObjectByType<PlayerStamina>();
+        playerHealthScript = Object.FindAnyObjectByType<PlayerHealth>();
+        playerStaminaScript = Object.FindAnyObjectByType<PlayerStamina>();
     }
 
     void Update()

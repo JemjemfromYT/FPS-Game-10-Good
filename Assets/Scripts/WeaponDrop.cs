@@ -42,14 +42,10 @@ public class WeaponDrop : MonoBehaviour
         }
 
         if (fireScript == null)
-        {
             fireScript = GetComponent<WeaponFire>();
-        }
 
         if (fireScript != null)
-        {
             fireScript.CancelWeaponActions();
-        }
 
         Vector3 spawnPos = cameraTransform.position + (cameraTransform.forward * 1.2f);
         GameObject droppedItem = Instantiate(floorPrefab, spawnPos, cameraTransform.rotation);
@@ -61,17 +57,11 @@ public class WeaponDrop : MonoBehaviour
 
         Animator anim = droppedItem.GetComponent<Animator>();
         if (anim == null) anim = droppedItem.GetComponentInChildren<Animator>();
-        if (anim != null)
-        {
-            anim.enabled = false;
-        }
+        if (anim != null) anim.enabled = false;
 
         MeshCollider meshCol = droppedItem.GetComponent<MeshCollider>();
         if (meshCol == null) meshCol = droppedItem.GetComponentInChildren<MeshCollider>();
-        if (meshCol != null)
-        {
-            meshCol.convex = true;
-        }
+        if (meshCol != null) meshCol.convex = true;
 
         Rigidbody rb = droppedItem.GetComponent<Rigidbody>();
         if (rb == null) rb = droppedItem.AddComponent<Rigidbody>();
@@ -84,9 +74,7 @@ public class WeaponDrop : MonoBehaviour
 
         WeaponPickup pickupScript = droppedItem.GetComponent<WeaponPickup>();
         if (pickupScript != null)
-        {
             pickupScript.actionText = actionText;
-        }
 
         gameObject.SetActive(false);
     }
@@ -94,63 +82,44 @@ public class WeaponDrop : MonoBehaviour
     public void EnsureDropReferences()
     {
         if (fireScript == null)
-        {
             fireScript = GetComponent<WeaponFire>();
-        }
 
         if (actionText == null)
-        {
             actionText = GameObject.Find("ActionText");
-        }
 
         if (floorPrefab == null)
         {
             WeaponContainerSetup setup = GetComponentInParent<WeaponContainerSetup>();
             if (setup != null)
-            {
                 floorPrefab = setup.GetFloorPrefab(gameObject.name);
-            }
         }
 
         if (playerCamera == null)
         {
             Transform cameraTransform = ResolveCameraTransform();
             if (cameraTransform != null)
-            {
                 playerCamera = cameraTransform;
-            }
         }
     }
 
     Transform ResolveCameraTransform()
     {
-        if (playerCamera != null)
-        {
-            return playerCamera;
-        }
+        if (playerCamera != null) return playerCamera;
 
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null)
         {
             Camera playerCam = player.GetComponentInChildren<Camera>(true);
-            if (playerCam != null)
-            {
-                return playerCam.transform;
-            }
+            if (playerCam != null) return playerCam.transform;
         }
 
-        if (Camera.main != null)
-        {
-            return Camera.main.transform;
-        }
+        if (Camera.main != null) return Camera.main.transform;
 
-        Camera[] cameras = FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        // Fixed: removed the obsolete FindObjectsSortMode parameter
+        Camera[] cameras = FindObjectsByType<Camera>(FindObjectsInactive.Include);
         foreach (Camera cam in cameras)
         {
-            if (cam != null && cam.enabled)
-            {
-                return cam.transform;
-            }
+            if (cam != null && cam.enabled) return cam.transform;
         }
 
         return null;

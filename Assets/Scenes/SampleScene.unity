@@ -1720,13 +1720,17 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: a896a5a4659ce6a4fa92cf398087cc7d, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: a896a5a4659ce6a4fa92cf398087cc7d, type: 3}
       propertyPath: m_Name
       value: Weapon_ChromeShotgun
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: a896a5a4659ce6a4fa92cf398087cc7d, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -3365,6 +3369,7 @@ MonoBehaviour:
   - {fileID: 595143855}
   - {fileID: 372738251}
   moveSpeed: 4
+  sprintSpeed: 8.5
   lookSensitivity: 0.15
 --- !u!4 &424199791
 Transform:
@@ -13145,7 +13150,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1866082442
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14566,7 +14571,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2351098819552251455, guid: 47de9dad01ec70643b0dedd281ba79dc, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 0.165
       objectReference: {fileID: 0}
     - target: {fileID: 2351098819552251455, guid: 47de9dad01ec70643b0dedd281ba79dc, type: 3}
       propertyPath: m_LocalPosition.z
@@ -14975,7 +14980,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3850659289626858647, guid: 21ca669aad4b10244b591e8c30a62ffb, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.48899996
+      value: 0.609
       objectReference: {fileID: 0}
     - target: {fileID: 3850659289626858647, guid: 21ca669aad4b10244b591e8c30a62ffb, type: 3}
       propertyPath: m_LocalPosition.z
@@ -15016,6 +15021,10 @@ PrefabInstance:
     - target: {fileID: 5798956513335105440, guid: 21ca669aad4b10244b591e8c30a62ffb, type: 3}
       propertyPath: m_Name
       value: PistolAmmo
+      objectReference: {fileID: 0}
+    - target: {fileID: 5858893479735383211, guid: 21ca669aad4b10244b591e8c30a62ffb, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.66
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -15481,13 +15490,17 @@ PrefabInstance:
       propertyPath: ammoCollectSound
       value: 
       objectReference: {fileID: 752833497}
+    - target: {fileID: 3140685291384634791, guid: 3f67b0ec0bc4e2043b617f174ceceb78, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.569
+      objectReference: {fileID: 0}
     - target: {fileID: 3210184268176497617, guid: 3f67b0ec0bc4e2043b617f174ceceb78, type: 3}
       propertyPath: m_LocalPosition.x
       value: -16.442
       objectReference: {fileID: 0}
     - target: {fileID: 3210184268176497617, guid: 3f67b0ec0bc4e2043b617f174ceceb78, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 0.669
       objectReference: {fileID: 0}
     - target: {fileID: 3210184268176497617, guid: 3f67b0ec0bc4e2043b617f174ceceb78, type: 3}
       propertyPath: m_LocalPosition.z
@@ -15520,6 +15533,14 @@ PrefabInstance:
     - target: {fileID: 3210184268176497617, guid: 3f67b0ec0bc4e2043b617f174ceceb78, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5667967227648286556, guid: 3f67b0ec0bc4e2043b617f174ceceb78, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5667967227648286556, guid: 3f67b0ec0bc4e2043b617f174ceceb78, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.6199164
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
